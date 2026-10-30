@@ -61,7 +61,8 @@ export function createFirecrawlClient({
           'Content-Type': 'application/json',
         },
         // maxAge 0: sem isso a Firecrawl devolve conteúdo em cache e uma mudança real passa como "ok".
-        body: JSON.stringify({ url, formats: ['markdown', 'html'], maxAge: 0 }),
+        // rawHtml (e não html): a Fase 2 precisa dos formulários e scripts como vieram no servidor.
+        body: JSON.stringify({ url, formats: ['markdown', 'rawHtml'], maxAge: 0 }),
         signal: controller.signal,
       });
 
@@ -75,7 +76,7 @@ export function createFirecrawlClient({
         );
       }
 
-      return { markdown: payload.data?.markdown ?? '' };
+      return { markdown: payload.data?.markdown ?? '', html: payload.data?.rawHtml ?? '' };
     } catch (error) {
       if (error instanceof ScrapeError) throw error;
       if (error.name === 'AbortError') {

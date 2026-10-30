@@ -6,8 +6,8 @@ export const MAX_SNAPSHOTS_PER_MONITOR = 50;
 
 export function createSnapshotsRepository(db) {
   const insertStmt = db.prepare(`
-    INSERT INTO snapshots (monitor_id, content_hash, normalized_text)
-    VALUES (?, ?, ?)
+    INSERT INTO snapshots (monitor_id, content_hash, normalized_text, signals)
+    VALUES (?, ?, ?, ?)
   `);
   const findLatestStmt = db.prepare(`
     SELECT * FROM snapshots
@@ -35,12 +35,14 @@ export function createSnapshotsRepository(db) {
   `);
 
   return {
-    insert({ monitorId, contentHash, normalizedText }) {
-      insertStmt.run(monitorId, contentHash, normalizedText);
+    insert({ monitorId, contentHash, normalizedText, signals }) {
+      insertStmt.run(monitorId, contentHash, normalizedText, JSON.stringify(signals));
     },
 
+    // `signals` volta já convertido em objeto. Leituras antigas (antes da Fase 2) viram {}.
     findLatest(monitorId) {
-      return findLatestStmt.get(monitorId);
+      const row = findLatestStmt.get(monitorId);
+      return row ? { ...row, signals: JSON.parse(row.signals) } : undefined;
     },
 
     listForUser(userId, monitorId, limit) {

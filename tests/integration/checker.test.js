@@ -35,6 +35,8 @@ function setup({ scrape, assertPublicUrl = async () => {} } = {}) {
     alerts: ctx.repos.alerts,
     scrape,
     assertPublicUrl,
+    // Sem rede: o certificado real é lido só em testes próprios dos detectores.
+    inspectCertificate: async () => null,
   });
   return { ...ctx, monitor, checkMonitor };
 }
