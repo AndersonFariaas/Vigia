@@ -83,6 +83,9 @@ As variáveis são validadas na inicialização. **Se faltar alguma, o servidor 
 | `RESEND_API_KEY` | sim | | Envio dos e-mails de alerta |
 | `ALERT_EMAIL_FROM` | sim | | Remetente (precisa de domínio verificado na Resend) |
 | `ALERT_EMAIL_TO` | sim | | Destino dos alertas |
+| `DEVIN_API_KEY` | sim | | Chave de service user da Devin (começa com `cog_`) |
+| `DEVIN_ORG_ID` | sim | | ID da organização na Devin (começa com `org-`) |
+| `DEVIN_MAX_ACU_LIMIT` | não | `2` | Teto de consumo por análise, em ACUs (1 a 10) |
 | `CHECK_CRON` | não | `*/15 * * * *` | Quando o agendador roda |
 | `DATABASE_PATH` | não | `./data/vigia.db` | Arquivo SQLite |
 | `HOST` | não | `127.0.0.1` | Interface de escuta |
@@ -212,7 +215,18 @@ O `runRound` tem uma flag `running`. Se a rodada anterior ainda está rodando (u
 
 Gravar o snapshot, podar os antigos, criar o alerta e atualizar o monitor **acontecem juntos** numa transação. Se a energia cair no meio, nenhum deles fica sem os outros.
 
-### 11. Painel sem `v-html`
+### 11. Análise com a Devin: sob demanda, com teto e sem repositório
+
+A Devin entra como **análise de um alerta**, disparada pelo usuário no botão "Analisar com Devin". O motivo de não ser automática: cada sessão consome créditos, e uma página que muda a cada hora geraria custo sem valor. Quando o usuário clica:
+
+- o prompt contém o resumo do diff dentro de um bloco de dados marcado, com a instrução de **não obedecer** o que estiver ali. Uma página maliciosa poderia escrever instruções para o agente, então o prompt também remove qualquer tentativa de fechar esse bloco;
+- a sessão **não recebe repositório** e `bypass_approval` fica `false`, então qualquer ação do agente exige aprovação humana;
+- `max_acu_limit` limita o consumo por análise (configurável);
+- o POST **não é retentado**: se der timeout, repetir poderia criar duas sessões e cobrar duas vezes;
+- cada alerta tem no máximo uma análise (`UNIQUE` no banco), e um duplo clique não cria outra, porque a rota recusa a segunda chamada enquanto a primeira está em andamento;
+- a URL da sessão só é aceita se for `https`, porque ela vira link no painel.
+
+### 12. Painel sem `v-html`
 
 Todo texto da página, do alerta ou do erro é exibido por interpolação do Vue, que escapa automaticamente. Os links usam `rel="noopener noreferrer"`.
 
@@ -230,6 +244,7 @@ Todas as respostas de erro são JSON, sem stack trace. O corpo é limitado a 10 
 | `POST` | `/api/monitors/:id/check` | Checagem imediata |
 | `GET` | `/api/monitors/:id/snapshots` | Últimos snapshots (sem o texto completo) |
 | `GET` | `/api/monitors/:id/alerts` | Últimos alertas com o diff |
+| `POST` | `/api/monitors/:id/alerts/:alertId/analyze` | Abre a análise do alerta na Devin (201; 200 se já existe; 502 se a Devin falhar) |
 | `DELETE` | `/api/monitors/:id` | Remove, com cascata |
 
 Exemplo de cadastro:
@@ -267,7 +282,7 @@ O site da hackathon (hackbrasil.com) exige que **todo projeto implemente Firecra
 |---|---|
 | Firecrawl | Implementado (coleta das páginas) |
 | Resend | Implementado (alertas por e-mail) |
-| **Devin** | **Pendente.** Não faz parte da especificação da Fase 1 |
+| Devin | Implementado: análise sob demanda de cada alerta (ver decisão 11) |
 | Repositório **público** no GitHub | Exigido. Antes de publicar, confirme que o `.env` não está no histórico |
 | Demo funcionando | Necessária para a avaliação |
 | Critérios de avaliação | execução técnica, uso das ferramentas dos parceiros, impacto e qualidade do pitch |
