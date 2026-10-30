@@ -12,6 +12,7 @@ const FREQUENCY_OPTIONS = [
 ];
 const DEFAULT_INTERVAL_MINUTES = 60;
 const THEME_STORAGE_KEY = 'vigia-theme';
+const THEME_TRANSITION_MS = 300;
 
 const STATUS_VIEW = {
   referencia: { label: 'referência salva', tone: 'info' },
@@ -97,7 +98,12 @@ function applyTheme(value) {
 }
 
 function toggleTheme() {
+  // A classe liga a transição de cor só durante a troca. Assim, a página não anima ao carregar.
+  document.documentElement.classList.add('theme-switching');
   applyTheme(theme.value === 'dark' ? 'light' : 'dark');
+  window.setTimeout(() => {
+    document.documentElement.classList.remove('theme-switching');
+  }, THEME_TRANSITION_MS);
 }
 
 function initTheme() {
@@ -332,7 +338,7 @@ onMounted(() => {
         Nenhuma página monitorada ainda. Cadastre a primeira acima.
       </div>
 
-      <ul v-else class="list">
+      <TransitionGroup v-else name="card" tag="ul" class="list">
         <li v-for="monitor in monitors" :key="monitor.id" class="card">
           <div class="card__header">
             <div>
@@ -394,79 +400,83 @@ onMounted(() => {
             </button>
           </div>
 
-          <div v-if="isHistoryOpen(monitor)" class="history">
-            <p class="history__title">Alertas</p>
-            <p class="card__note">
-              A análise abre uma sessão na Devin e consome créditos da conta. Cada alerta é analisado uma vez.
-            </p>
-
-            <p v-if="history[monitor.id].loading" class="card__note">Carregando…</p>
-            <p v-else-if="history[monitor.id].error" class="card__error">
-              {{ history[monitor.id].error }}
-            </p>
-            <p v-else-if="!history[monitor.id].items.length" class="card__note">
-              Nenhum alerta ainda.
-            </p>
-
-            <ul v-else class="history__list">
-              <li v-for="alert in history[monitor.id].items" :key="alert.id" class="history__item">
-                <p>
-                  <span class="history__time">{{ formatDate(alert.createdAt) }}</span>
-                  · {{ SEND_STATUS_LABEL[alert.sendStatus] ?? alert.sendStatus }}
+          <Transition name="collapse">
+            <div v-if="isHistoryOpen(monitor)" class="history-collapse">
+              <div class="history">
+                <p class="history__title">Alertas</p>
+                <p class="card__note">
+                  A análise abre uma sessão na Devin e consome créditos da conta. Cada alerta é analisado uma vez.
                 </p>
-                <template v-if="alert.kind === 'risco'">
-                  <p>{{ alert.details.titulo }}</p>
-                  <p class="card__meta">
-                    {{ SEVERITY_LABEL[alert.severity] ?? alert.severity }} · {{ alert.details.descricao }}
-                  </p>
-                </template>
-                <template v-else>
-                  <p class="card__meta">
-                    +{{ alert.details.addedCount }} / −{{ alert.details.removedCount }} linhas
-                  </p>
 
-                  <ul v-if="alert.details.added.length" class="diff">
-                    <li v-for="(line, index) in alert.details.added" :key="`a-${index}`" class="diff__added">
-                      + {{ line }}
-                    </li>
-                  </ul>
-                  <ul v-if="alert.details.removed.length" class="diff">
-                    <li v-for="(line, index) in alert.details.removed" :key="`r-${index}`" class="diff__removed">
-                      − {{ line }}
-                    </li>
-                  </ul>
-                </template>
-
-                <div class="card__actions">
-                  <a
-                    v-if="alert.analysis"
-                    class="button button--ghost button--small"
-                    :href="alert.analysis.sessionUrl"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Ver análise na Devin
-                  </a>
-                  <button
-                    v-else
-                    class="button button--ghost button--small"
-                    type="button"
-                    :disabled="Boolean(analyzing[alert.id])"
-                    :aria-busy="Boolean(analyzing[alert.id])"
-                    @click="analyzeAlert(monitor, alert)"
-                  >
-                    <span v-if="analyzing[alert.id]" class="spinner" aria-hidden="true"></span>
-                    {{ analyzing[alert.id] ? 'Analisando…' : 'Analisar com Devin' }}
-                  </button>
-                </div>
-                <p v-if="analysisErrors[alert.id]" class="card__error" role="alert">
-                  {{ analysisErrors[alert.id] }}
+                <p v-if="history[monitor.id].loading" class="card__note">Carregando…</p>
+                <p v-else-if="history[monitor.id].error" class="card__error">
+                  {{ history[monitor.id].error }}
                 </p>
-              </li>
-            </ul>
-          </div>
+                <p v-else-if="!history[monitor.id].items.length" class="card__note">
+                  Nenhum alerta ainda.
+                </p>
+
+                <ul v-else class="history__list">
+                  <li v-for="alert in history[monitor.id].items" :key="alert.id" class="history__item">
+                    <p>
+                      <span class="history__time">{{ formatDate(alert.createdAt) }}</span>
+                      · {{ SEND_STATUS_LABEL[alert.sendStatus] ?? alert.sendStatus }}
+                    </p>
+                    <template v-if="alert.kind === 'risco'">
+                      <p>{{ alert.details.titulo }}</p>
+                      <p class="card__meta">
+                        {{ SEVERITY_LABEL[alert.severity] ?? alert.severity }} · {{ alert.details.descricao }}
+                      </p>
+                    </template>
+                    <template v-else>
+                      <p class="card__meta">
+                        +{{ alert.details.addedCount }} / −{{ alert.details.removedCount }} linhas
+                      </p>
+
+                      <ul v-if="alert.details.added.length" class="diff">
+                        <li v-for="(line, index) in alert.details.added" :key="`a-${index}`" class="diff__added">
+                          + {{ line }}
+                        </li>
+                      </ul>
+                      <ul v-if="alert.details.removed.length" class="diff">
+                        <li v-for="(line, index) in alert.details.removed" :key="`r-${index}`" class="diff__removed">
+                          − {{ line }}
+                        </li>
+                      </ul>
+                    </template>
+
+                    <div class="card__actions">
+                      <a
+                        v-if="alert.analysis"
+                        class="button button--ghost button--small"
+                        :href="alert.analysis.sessionUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Ver análise na Devin
+                      </a>
+                      <button
+                        v-else
+                        class="button button--ghost button--small"
+                        type="button"
+                        :disabled="Boolean(analyzing[alert.id])"
+                        :aria-busy="Boolean(analyzing[alert.id])"
+                        @click="analyzeAlert(monitor, alert)"
+                      >
+                        <span v-if="analyzing[alert.id]" class="spinner" aria-hidden="true"></span>
+                        {{ analyzing[alert.id] ? 'Analisando…' : 'Analisar com Devin' }}
+                      </button>
+                    </div>
+                    <p v-if="analysisErrors[alert.id]" class="card__error" role="alert">
+                      {{ analysisErrors[alert.id] }}
+                    </p>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </Transition>
         </li>
-      </ul>
+      </TransitionGroup>
     </section>
 
     <p class="card__note" style="margin-top: 32px">

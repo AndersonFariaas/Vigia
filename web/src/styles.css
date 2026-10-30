@@ -399,10 +399,21 @@ select {
   margin-top: var(--space-4);
 }
 
-.history {
+/*
+ * A gaveta é o wrapper: margem, padding e borda também vivem nele, para que a animação
+ * de fechar zere tudo. Se o espaçamento ficasse no filho, sobraria uma faixa de 17px.
+ */
+.history-collapse {
+  display: grid;
+  grid-template-rows: 1fr;
   margin-top: var(--space-4);
   padding-top: var(--space-4);
   border-top: 1px dashed var(--border);
+}
+
+.history-collapse > .history {
+  min-height: 0;
+  overflow: hidden;
 }
 
 .history__title {
@@ -527,5 +538,109 @@ select {
 
   .form__actions .button {
     width: 100%;
+  }
+}
+
+/*
+ * Movimento. Tudo fica dentro de no-preference: quem pede menos animação não recebe nada disso.
+ * Só transform e opacity animam, para não forçar recálculo de layout.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+
+  @keyframes pulse {
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  .button {
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      color 0.2s ease,
+      transform 0.15s ease;
+  }
+
+  .button:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  .card {
+    transition:
+      border-color 0.25s ease,
+      box-shadow 0.25s ease;
+  }
+
+  @media (hover: hover) {
+    .card:hover {
+      border-color: var(--muted);
+      box-shadow: 0 6px 18px rgb(15 23 42 / 0.08);
+    }
+  }
+
+  .badge {
+    transition:
+      color 0.3s ease,
+      background-color 0.3s ease;
+  }
+
+  .message,
+  .card__note,
+  .card__error,
+  .history__item {
+    animation: fade-in 0.25s ease both;
+  }
+
+  .status--online .status__dot {
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+
+  /* Entrada e saída dos cartões (criar, remover). */
+  .card-enter-active,
+  .card-leave-active {
+    transition:
+      opacity 0.3s ease,
+      transform 0.3s ease;
+  }
+
+  .card-enter-from,
+  .card-leave-to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  /* Gaveta de alertas: abre e fecha animando a altura pela grade. */
+  .collapse-enter-active,
+  .collapse-leave-active {
+    transition:
+      grid-template-rows 0.3s ease,
+      opacity 0.3s ease,
+      margin-top 0.3s ease,
+      padding-top 0.3s ease,
+      border-top-width 0.3s ease;
+  }
+
+  .collapse-enter-from,
+  .collapse-leave-to {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    margin-top: 0;
+    padding-top: 0;
+    border-top-width: 0;
+  }
+
+  /* Troca de tema: só durante a troca, para não animar a página inteira ao carregar. */
+  .theme-switching,
+  .theme-switching * {
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease,
+      border-color 0.3s ease !important;
   }
 }
