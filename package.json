@@ -1,0 +1,25 @@
+{
+  "name": "vigia",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monitor de alterações e sinais de risco em páginas web.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "migrate": "node src/db/migrate.js",
+    "test": "node --test \"tests/**/*.test.js\"",
+    "web:dev": "npm --prefix web run dev",
+    "web:build": "npm --prefix web run build",
+    "web:install": "npm --prefix web install"
+  },
+  "dependencies": {
+    "express": "^4.22.3",
+    "helmet": "^8.3.0",
+    "node-cron": "^4.6.0",
+    "zod": "^4.6.7"
+  }
+}
