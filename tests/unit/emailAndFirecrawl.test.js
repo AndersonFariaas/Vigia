@@ -72,6 +72,8 @@ describe('createFirecrawlClient', () => {
     assert.equal(captured.init.method, 'POST');
     assert.equal(captured.init.headers.Authorization, 'Bearer fc-teste');
     assert.deepEqual(captured.body.formats, ['markdown', 'html']);
+    // Sem maxAge 0 a Firecrawl devolve cache e mudanças reais passam como "ok".
+    assert.equal(captured.body.maxAge, 0);
   });
 
   test('retenta em 503 e tem sucesso na segunda tentativa', async () => {

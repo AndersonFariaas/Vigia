@@ -60,7 +60,8 @@ export function createFirecrawlClient({
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url, formats: ['markdown', 'html'] }),
+        // maxAge 0: sem isso a Firecrawl devolve conteúdo em cache e uma mudança real passa como "ok".
+        body: JSON.stringify({ url, formats: ['markdown', 'html'], maxAge: 0 }),
         signal: controller.signal,
       });
 
