@@ -7,6 +7,8 @@ const validEnv = {
   RESEND_API_KEY: 're_teste',
   ALERT_EMAIL_FROM: 'Vigia <alertas@exemplo.com>',
   ALERT_EMAIL_TO: 'dono@exemplo.com',
+  DEVIN_API_KEY: 'cog_teste',
+  DEVIN_ORG_ID: 'org-abc123',
 };
 
 describe('loadConfig', () => {
@@ -17,6 +19,7 @@ describe('loadConfig', () => {
     assert.equal(config.HOST, '127.0.0.1');
     assert.equal(config.PORT, 3000);
     assert.equal(config.DATABASE_PATH, './data/vigia.db');
+    assert.equal(config.DEVIN_MAX_ACU_LIMIT, 2);
   });
 
   test('lista todas as variáveis faltantes de uma vez', () => {
@@ -29,6 +32,8 @@ describe('loadConfig', () => {
           'RESEND_API_KEY',
           'ALERT_EMAIL_FROM',
           'ALERT_EMAIL_TO',
+          'DEVIN_API_KEY',
+          'DEVIN_ORG_ID',
         ]) {
           assert.ok(error.message.includes(name), `faltou ${name} na mensagem`);
         }
@@ -47,6 +52,16 @@ describe('loadConfig', () => {
       () => loadConfig({ ...validEnv, FIRECRAWL_BASE_URL: 'ftp://x.com' }),
       /FIRECRAWL_BASE_URL/,
     );
+  });
+
+  test('rejeita ID de organização da Devin sem o prefixo org-', () => {
+    assert.throws(() => loadConfig({ ...validEnv, DEVIN_ORG_ID: 'abc123' }), /DEVIN_ORG_ID/);
+  });
+
+  test('limita o teto de ACUs entre 1 e 10', () => {
+    assert.throws(() => loadConfig({ ...validEnv, DEVIN_MAX_ACU_LIMIT: 0 }), /DEVIN_MAX_ACU_LIMIT/);
+    assert.throws(() => loadConfig({ ...validEnv, DEVIN_MAX_ACU_LIMIT: 50 }), /DEVIN_MAX_ACU_LIMIT/);
+    assert.equal(loadConfig({ ...validEnv, DEVIN_MAX_ACU_LIMIT: '5' }).DEVIN_MAX_ACU_LIMIT, 5);
   });
 
   test('rejeita e-mail de destino inválido', () => {

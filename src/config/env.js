@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 const DEFAULT_CRON = '*/15 * * * *';
 const DEFAULT_FIRECRAWL_URL = 'https://api.firecrawl.dev';
+const DEFAULT_DEVIN_ACU_LIMIT = 2;
 const DEFAULT_DATABASE_PATH = './data/vigia.db';
 
 // Diferencia "variável ausente" de "valor inválido" para a mensagem ficar clara.
@@ -18,6 +19,17 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string(fieldError('deve ser um texto')).min(1, 'não pode ser vazia'),
   ALERT_EMAIL_FROM: z.string(fieldError('deve ser um texto')).min(1, 'não pode ser vazia'),
   ALERT_EMAIL_TO: z.email(fieldError('deve ser um e-mail válido')),
+  DEVIN_API_KEY: z.string(fieldError('deve ser um texto')).min(1, 'não pode ser vazia'),
+  DEVIN_ORG_ID: z
+    .string(fieldError('deve ser um texto'))
+    .regex(/^org-[\w-]+$/, 'deve começar com "org-" (veja Settings > Devin API)'),
+  // Teto de consumo por análise: uma análise nunca custa mais do que isto.
+  DEVIN_MAX_ACU_LIMIT: z.coerce
+    .number()
+    .int('deve ser um número inteiro')
+    .min(1, 'deve ser pelo menos 1')
+    .max(10, 'deve ser no máximo 10')
+    .default(DEFAULT_DEVIN_ACU_LIMIT),
   CHECK_CRON: z
     .string()
     .default(DEFAULT_CRON)

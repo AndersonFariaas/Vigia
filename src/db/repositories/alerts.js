@@ -8,8 +8,15 @@ export const SEND_STATUS = Object.freeze({
   FALHOU: 'falhou',
 });
 
+// Converte a linha do banco no formato usado pelo resto do código.
+// A análise vem de um LEFT JOIN: fica null quando o alerta nunca foi analisado.
 function parseAlert(row) {
-  return { ...row, details: JSON.parse(row.details) };
+  const { analysis_url: analysisUrl, analysis_created_at: analysisCreatedAt, ...alert } = row;
+  return {
+    ...alert,
+    details: JSON.parse(row.details),
+    analysis: analysisUrl ? { sessionUrl: analysisUrl, createdAt: analysisCreatedAt } : null,
+  };
 }
 
 export function createAlertsRepository(db) {
@@ -17,10 +24,17 @@ export function createAlertsRepository(db) {
     INSERT INTO alerts (monitor_id, kind, severity, details)
     VALUES (?, ?, ?, ?)
   `);
-  const listForUserStmt = db.prepare(`
+  const findForUserStmt = db.prepare(`
     SELECT a.*
     FROM alerts a
     JOIN monitors m ON m.id = a.monitor_id
+    WHERE a.id = ? AND m.user_id = ?
+  `);
+  const listForUserStmt = db.prepare(`
+    SELECT a.*, an.session_url AS analysis_url, an.created_at AS analysis_created_at
+    FROM alerts a
+    JOIN monitors m ON m.id = a.monitor_id
+    LEFT JOIN analyses an ON an.alert_id = a.id
     WHERE a.monitor_id = ? AND m.user_id = ?
     ORDER BY a.created_at DESC, a.id DESC
     LIMIT ?
@@ -44,14 +58,17 @@ export function createAlertsRepository(db) {
       return Number(result.lastInsertRowid);
     },
 
+    findForUser(userId, id) {
+      const row = findForUserStmt.get(id, userId);
+      return row ? { ...row, details: JSON.parse(row.details) } : undefined;
+    },
+
     listForUser(userId, monitorId, limit) {
       return listForUserStmt.all(monitorId, userId, limit).map(parseAlert);
     },
 
     findPendingWithMonitor(limit) {
-      return pendingWithMonitorStmt
-        .all(SEND_STATUS.PENDENTE, limit)
-        .map(parseAlert);
+      return pendingWithMonitorStmt.all(SEND_STATUS.PENDENTE, limit).map(parseAlert);
     },
 
     markSent(id, sentAt) {

@@ -1,6 +1,7 @@
 import { openDatabase } from '../../src/db/index.js';
 import { applyMigrations } from '../../src/db/migrate.js';
 import { createAlertsRepository } from '../../src/db/repositories/alerts.js';
+import { createAnalysesRepository } from '../../src/db/repositories/analyses.js';
 import { createMonitorsRepository } from '../../src/db/repositories/monitors.js';
 import { createSnapshotsRepository } from '../../src/db/repositories/snapshots.js';
 import { ensureOwner, OWNER_ID } from '../../src/db/repositories/users.js';
@@ -18,6 +19,7 @@ export function createTestContext() {
       monitors: createMonitorsRepository(db),
       snapshots: createSnapshotsRepository(db),
       alerts: createAlertsRepository(db),
+      analyses: createAnalysesRepository(db),
     },
     count(table) {
       return db.prepare(`SELECT COUNT(*) AS total FROM ${table}`).get().total;

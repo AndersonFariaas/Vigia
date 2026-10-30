@@ -17,7 +17,8 @@ function errorHandler(log) {
     if (error.type === 'entity.too.large') {
       return res.status(413).json({ error: `O corpo da requisição excede ${JSON_BODY_LIMIT}.` });
     }
-    if (error.expose && error.status >= 400 && error.status < 500) {
+    // Erros de serviços externos (status 5xx) também são seguros de exibir: já vêm sanitizados.
+    if (error.expose && error.status >= 400 && error.status < 600) {
       return res.status(error.status).json({
         error: error.message,
         ...(error.details ? { details: error.details } : {}),
@@ -33,7 +34,15 @@ function errorHandler(log) {
  * Monta o Express sem subir o servidor, para os testes usarem uma instância própria.
  * `staticDir` só é passado em produção: em desenvolvimento quem serve o painel é o Vite.
  */
-export function createApp({ repos, ownerId, checkMonitor, assertPublicUrl, staticDir = null, log = () => {} }) {
+export function createApp({
+  repos,
+  ownerId,
+  checkMonitor,
+  assertPublicUrl,
+  analyst,
+  staticDir = null,
+  log = () => {},
+}) {
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet());
@@ -45,7 +54,7 @@ export function createApp({ repos, ownerId, checkMonitor, assertPublicUrl, stati
 
   app.use(
     '/api/monitors',
-    createMonitorsRouter({ repos, ownerId, checkMonitor, assertPublicUrl }),
+    createMonitorsRouter({ repos, ownerId, checkMonitor, assertPublicUrl, analyst }),
   );
 
   app.use('/api', (req, res) => {

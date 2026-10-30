@@ -6,6 +6,7 @@ import { ConfigError, loadConfig } from './config/env.js';
 import { openDatabase } from './db/index.js';
 import { applyMigrations } from './db/migrate.js';
 import { createAlertsRepository } from './db/repositories/alerts.js';
+import { createAnalysesRepository } from './db/repositories/analyses.js';
 import { createMonitorsRepository } from './db/repositories/monitors.js';
 import { createSnapshotsRepository } from './db/repositories/snapshots.js';
 import { ensureOwner } from './db/repositories/users.js';
@@ -14,6 +15,7 @@ import { createChecker } from './services/checker.js';
 import { createFirecrawlClient } from './services/scraper/firecrawlClient.js';
 import { createDispatcher } from './services/notifier/dispatcher.js';
 import { createResendClient } from './services/notifier/resendClient.js';
+import { createDevinClient } from './services/analyst/devinClient.js';
 import { createRoundRunner, startScheduler } from './services/scheduler/jobs.js';
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost']);
@@ -39,6 +41,7 @@ async function main() {
     monitors: createMonitorsRepository(db),
     snapshots: createSnapshotsRepository(db),
     alerts: createAlertsRepository(db),
+    analyses: createAnalysesRepository(db),
   };
 
   const scrape = createFirecrawlClient({
@@ -48,6 +51,12 @@ async function main() {
   const resend = createResendClient({
     apiKey: config.RESEND_API_KEY,
     from: config.ALERT_EMAIL_FROM,
+  });
+
+  const analyst = createDevinClient({
+    apiKey: config.DEVIN_API_KEY,
+    orgId: config.DEVIN_ORG_ID,
+    maxAcuLimit: config.DEVIN_MAX_ACU_LIMIT,
   });
 
   const assertPublicUrl = (url) => assertPublicHost(new URL(url).hostname);
@@ -72,7 +81,15 @@ async function main() {
     log('warn', 'web/dist não encontrado. Rode "npm run web:build" para servir o painel.');
   }
 
-  const app = createApp({ repos, ownerId, checkMonitor, assertPublicUrl, staticDir, log });
+  const app = createApp({
+    repos,
+    ownerId,
+    checkMonitor,
+    assertPublicUrl,
+    analyst,
+    staticDir,
+    log,
+  });
 
   if (!LOOPBACK_HOSTS.has(config.HOST)) {
     log(

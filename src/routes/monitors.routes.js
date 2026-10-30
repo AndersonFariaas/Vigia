@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { validateMonitorUrl } from '../security/urlValidator.js';
 import { CHECK_STATUS } from '../services/checker.js';
+import { buildAnalysisPrompt } from '../services/analyst/analysisPrompt.js';
 
 const MIN_INTERVAL_MINUTES = 15;
 const MAX_INTERVAL_MINUTES = 1440;
@@ -77,7 +78,12 @@ function toAlertDto(row) {
     sendStatus: row.send_status,
     sentAt: row.sent_at,
     createdAt: row.created_at,
+    analysis: row.analysis,
   };
+}
+
+function toAnalysisDto(row) {
+  return { sessionId: row.session_id, sessionUrl: row.session_url, createdAt: row.created_at };
 }
 
 const asyncHandler = (handler) => (req, res, next) => {
@@ -88,9 +94,11 @@ const asyncHandler = (handler) => (req, res, next) => {
  * Rotas de monitores. Todas usam `ownerId`: na Fase 1 é a conta única, mas o
  * filtro já está aqui para a Fase 3 trocar só a origem do id.
  */
-export function createMonitorsRouter({ repos, ownerId, checkMonitor, assertPublicUrl }) {
+export function createMonitorsRouter({ repos, ownerId, checkMonitor, assertPublicUrl, analyst }) {
   const router = Router();
-  const { monitors, snapshots, alerts } = repos;
+  const { monitors, snapshots, alerts, analyses } = repos;
+  // Duplo clique não pode criar duas sessões (e duas cobranças) para o mesmo alerta.
+  const analysesInFlight = new Set();
 
   // Busca o monitor do dono ou responde 404. Retorna null quando não achou.
   function findOwnedMonitor(req, res) {
@@ -152,6 +160,46 @@ export function createMonitorsRouter({ repos, ownerId, checkMonitor, assertPubli
     if (!monitor) return;
     res.json(alerts.listForUser(ownerId, monitor.id, HISTORY_LIMIT).map(toAlertDto));
   });
+
+  router.post(
+    '/:id/alerts/:alertId/analyze',
+    asyncHandler(async (req, res) => {
+      const monitor = findOwnedMonitor(req, res);
+      if (!monitor) return;
+
+      const alertId = parseId(req.params.alertId);
+      const alert = alerts.findForUser(ownerId, alertId);
+      if (!alert || alert.monitor_id !== monitor.id) {
+        res.status(404).json({ error: 'Alerta não encontrado.' });
+        return;
+      }
+
+      // Já analisado: devolve a sessão existente em vez de cobrar de novo.
+      const existing = analyses.findByAlertId(alertId);
+      if (existing) {
+        res.json(toAnalysisDto(existing));
+        return;
+      }
+
+      if (analysesInFlight.has(alertId)) {
+        res.status(409).json({ error: 'A análise deste alerta já está sendo criada.' });
+        return;
+      }
+
+      analysesInFlight.add(alertId);
+      try {
+        const prompt = buildAnalysisPrompt({ monitor, details: alert.details });
+        const session = await analyst.createAnalysisSession({
+          prompt,
+          title: `Vigia: alerta #${alertId}`,
+        });
+        analyses.insert({ alertId, sessionId: session.sessionId, sessionUrl: session.url });
+        res.status(201).json(toAnalysisDto(analyses.findByAlertId(alertId)));
+      } finally {
+        analysesInFlight.delete(alertId);
+      }
+    }),
+  );
 
   router.delete('/:id', (req, res) => {
     const monitor = findOwnedMonitor(req, res);
