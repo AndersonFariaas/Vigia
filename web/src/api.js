@@ -41,4 +41,6 @@ export const api = {
   checkMonitor: (id) => request(`/monitors/${id}/check`, { method: 'POST' }),
   listAlerts: (id) => request(`/monitors/${id}/alerts`),
   deleteMonitor: (id) => request(`/monitors/${id}`, { method: 'DELETE' }),
+  analyzeAlert: (monitorId, alertId) =>
+    request(`/monitors/${monitorId}/alerts/${alertId}/analyze`, { method: 'POST' }),
 };

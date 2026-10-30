@@ -48,6 +48,9 @@ const submitting = ref(false);
 const busy = reactive({});
 const notes = reactive({});
 const history = reactive({});
+// Análise da Devin, por alerta: ocupado e erro ficam separados da lista de alertas.
+const analyzing = reactive({});
+const analysisErrors = reactive({});
 
 function messageOf(error) {
   // A API devolve detalhes de validação já legíveis; priorizamos eles.
@@ -181,6 +184,19 @@ async function toggleHistory(monitor) {
   }
   history[monitor.id] = { open: true, loading: true, error: '', items: [] };
   await loadHistory(monitor.id);
+}
+
+async function analyzeAlert(monitor, alert) {
+  analyzing[alert.id] = true;
+  delete analysisErrors[alert.id];
+  try {
+    const analysis = await api.analyzeAlert(monitor.id, alert.id);
+    alert.analysis = { sessionUrl: analysis.sessionUrl, createdAt: analysis.createdAt };
+  } catch (error) {
+    analysisErrors[alert.id] = messageOf(error);
+  } finally {
+    delete analyzing[alert.id];
+  }
 }
 
 async function removeMonitor(monitor) {
@@ -374,6 +390,9 @@ onMounted(() => {
 
           <div v-if="isHistoryOpen(monitor)" class="history">
             <p class="history__title">Alertas</p>
+            <p class="card__note">
+              A análise abre uma sessão na Devin e consome créditos da conta. Cada alerta é analisado uma vez.
+            </p>
 
             <p v-if="history[monitor.id].loading" class="card__note">Carregando…</p>
             <p v-else-if="history[monitor.id].error" class="card__error">
@@ -403,6 +422,32 @@ onMounted(() => {
                     − {{ line }}
                   </li>
                 </ul>
+
+                <div class="card__actions">
+                  <a
+                    v-if="alert.analysis"
+                    class="button button--ghost button--small"
+                    :href="alert.analysis.sessionUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Ver análise na Devin
+                  </a>
+                  <button
+                    v-else
+                    class="button button--ghost button--small"
+                    type="button"
+                    :disabled="Boolean(analyzing[alert.id])"
+                    :aria-busy="Boolean(analyzing[alert.id])"
+                    @click="analyzeAlert(monitor, alert)"
+                  >
+                    <span v-if="analyzing[alert.id]" class="spinner" aria-hidden="true"></span>
+                    {{ analyzing[alert.id] ? 'Analisando…' : 'Analisar com Devin' }}
+                  </button>
+                </div>
+                <p v-if="analysisErrors[alert.id]" class="card__error" role="alert">
+                  {{ analysisErrors[alert.id] }}
+                </p>
               </li>
             </ul>
           </div>
