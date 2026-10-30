@@ -33,6 +33,12 @@ const SEND_STATUS_LABEL = {
   falhou: 'falha no envio',
 };
 
+const SEVERITY_LABEL = {
+  alta: 'risco alto',
+  media: 'risco médio',
+  baixa: 'risco baixo',
+};
+
 const theme = ref('light');
 const apiOnline = ref(null);
 
@@ -408,20 +414,28 @@ onMounted(() => {
                   <span class="history__time">{{ formatDate(alert.createdAt) }}</span>
                   · {{ SEND_STATUS_LABEL[alert.sendStatus] ?? alert.sendStatus }}
                 </p>
-                <p class="card__meta">
-                  +{{ alert.details.addedCount }} / −{{ alert.details.removedCount }} linhas
-                </p>
+                <template v-if="alert.kind === 'risco'">
+                  <p>{{ alert.details.titulo }}</p>
+                  <p class="card__meta">
+                    {{ SEVERITY_LABEL[alert.severity] ?? alert.severity }} · {{ alert.details.descricao }}
+                  </p>
+                </template>
+                <template v-else>
+                  <p class="card__meta">
+                    +{{ alert.details.addedCount }} / −{{ alert.details.removedCount }} linhas
+                  </p>
 
-                <ul v-if="alert.details.added.length" class="diff">
-                  <li v-for="(line, index) in alert.details.added" :key="`a-${index}`" class="diff__added">
-                    + {{ line }}
-                  </li>
-                </ul>
-                <ul v-if="alert.details.removed.length" class="diff">
-                  <li v-for="(line, index) in alert.details.removed" :key="`r-${index}`" class="diff__removed">
-                    − {{ line }}
-                  </li>
-                </ul>
+                  <ul v-if="alert.details.added.length" class="diff">
+                    <li v-for="(line, index) in alert.details.added" :key="`a-${index}`" class="diff__added">
+                      + {{ line }}
+                    </li>
+                  </ul>
+                  <ul v-if="alert.details.removed.length" class="diff">
+                    <li v-for="(line, index) in alert.details.removed" :key="`r-${index}`" class="diff__removed">
+                      − {{ line }}
+                    </li>
+                  </ul>
+                </template>
 
                 <div class="card__actions">
                   <a

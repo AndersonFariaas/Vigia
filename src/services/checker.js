@@ -5,6 +5,9 @@ import { MAX_SNAPSHOTS_PER_MONITOR } from '../db/repositories/snapshots.js';
 import { sha256 } from './diff/hash.js';
 import { diffLines } from './diff/textDiff.js';
 import { normalizeText } from './scraper/normalize.js';
+import { readPageSignals } from './detectors/pageSignals.js';
+import { buildRisks } from './detectors/risks.js';
+import { readCertificateExpiry } from './detectors/certificate.js';
 
 export const CHECK_STATUS = Object.freeze({
   REFERENCIA: 'referencia',
@@ -14,9 +17,10 @@ export const CHECK_STATUS = Object.freeze({
   EM_ANDAMENTO: 'em_andamento',
 });
 
-const ALERT_KIND = 'alteracao_conteudo';
-// Placeholder da Fase 1: a Fase 2 classifica a severidade de verdade.
-const ALERT_SEVERITY = 'media';
+const CONTENT_ALERT_KIND = 'alteracao_conteudo';
+const RISK_ALERT_KIND = 'risco';
+// Mudança de conteúdo mantém severidade fixa. Riscos trazem a própria severidade.
+const CONTENT_ALERT_SEVERITY = 'media';
 
 class EmptyContentError extends Error {
   constructor() {
@@ -49,7 +53,8 @@ export function toSafeMessage(error) {
 }
 
 /**
- * Fluxo de uma checagem: URL → SSRF → raspagem → normalização → hash → comparação.
+ * Fluxo de uma checagem: URL → SSRF → raspagem → normalização → hash → comparação,
+ * com os detectores de risco rodando sobre o HTML da mesma leitura.
  * Todas as dependências entram por parâmetro, então os testes rodam sem rede.
  */
 export function createChecker({
@@ -59,49 +64,97 @@ export function createChecker({
   alerts,
   scrape,
   assertPublicUrl = (url) => assertPublicHost(new URL(url).hostname),
+  inspectCertificate = readCertificateExpiry,
   now = () => new Date(),
   log = () => {},
 }) {
   // Duas checagens do mesmo monitor (manual + agendador) gerariam alertas duplicados.
   const inFlight = new Set();
 
-  async function fetchNormalizedText(url) {
+  async function fetchPage(url) {
     await assertPublicUrl(url);
-    const { markdown } = await scrape(url);
+    const { markdown, html } = await scrape(url);
     const text = normalizeText(markdown);
     if (!text) throw new EmptyContentError();
-    return text;
+    return { text, html };
   }
 
-  function compareWithLatest(monitor, text, checkedAt) {
-    const hash = sha256(text);
+  // Feito fora da transação: a leitura do certificado usa a rede.
+  async function analyzePage(url, html) {
+    const { hostname, protocol } = new URL(url);
+    const certificateValidTo = protocol === 'https:' ? await inspectCertificate(hostname) : null;
+    const details = readPageSignals({ html, pageUrl: url });
+    const risks = buildRisks({ signals: details, pageUrl: url, certificateValidTo, now: now() });
+
+    // Guardar as chaves dos riscos permite alertar só os que são novos na próxima leitura.
+    const signals = { ...details, certificateValidTo, riscos: risks.map((risk) => risk.key) };
+    return { signals, risks };
+  }
+
+  function insertRiskAlert(monitorId, risk) {
+    return alerts.insert({
+      monitorId,
+      kind: RISK_ALERT_KIND,
+      severity: risk.severity,
+      details: { chave: risk.key, titulo: risk.title, descricao: risk.description },
+    });
+  }
+
+  function compareWithLatest(monitor, page, checkedAt) {
+    const hash = sha256(page.text);
     const previous = snapshots.findLatest(monitor.id);
     const record = (status, error = null) =>
       monitors.updateCheckResult(monitor.user_id, monitor.id, { checkedAt, status, error });
+    const saveSnapshot = () => {
+      snapshots.insert({
+        monitorId: monitor.id,
+        contentHash: hash,
+        normalizedText: page.text,
+        signals: page.signals,
+      });
+      snapshots.pruneKeeping(monitor.id, MAX_SNAPSHOTS_PER_MONITOR);
+    };
 
-    // Primeira leitura: vira referência, sem alerta.
+    // Primeira leitura: vira referência. Riscos que já valem de início também alertam.
     if (!previous) {
-      snapshots.insert({ monitorId: monitor.id, contentHash: hash, normalizedText: text });
-      record(CHECK_STATUS.REFERENCIA);
-      return { status: CHECK_STATUS.REFERENCIA };
+      saveSnapshot();
+      const alertIds = page.risks
+        .filter((risk) => risk.baseline)
+        .map((risk) => insertRiskAlert(monitor.id, risk));
+      const status = alertIds.length ? CHECK_STATUS.ALTERADO : CHECK_STATUS.REFERENCIA;
+      record(status);
+      return { status, alertIds };
     }
 
-    if (previous.content_hash === hash) {
+    const textChanged = previous.content_hash !== hash;
+    const signalsChanged = JSON.stringify(page.signals) !== JSON.stringify(previous.signals);
+    if (!textChanged && !signalsChanged) {
       record(CHECK_STATUS.OK);
-      return { status: CHECK_STATUS.OK };
+      return { status: CHECK_STATUS.OK, alertIds: [] };
     }
 
-    const details = diffLines(previous.normalized_text, text);
-    snapshots.insert({ monitorId: monitor.id, contentHash: hash, normalizedText: text });
-    snapshots.pruneKeeping(monitor.id, MAX_SNAPSHOTS_PER_MONITOR);
-    const alertId = alerts.insert({
-      monitorId: monitor.id,
-      kind: ALERT_KIND,
-      severity: ALERT_SEVERITY,
-      details,
-    });
-    record(CHECK_STATUS.ALTERADO);
-    return { status: CHECK_STATUS.ALTERADO, alertId };
+    // Leituras anteriores à Fase 2 não guardam riscos: nesse caso nada é "novo", só se registra.
+    const previousKeys = previous.signals.riscos ? new Set(previous.signals.riscos) : null;
+    const newRisks = previousKeys ? page.risks.filter((risk) => !previousKeys.has(risk.key)) : [];
+
+    const alertIds = [];
+    if (textChanged) {
+      const details = diffLines(previous.normalized_text, page.text);
+      alertIds.push(
+        alerts.insert({
+          monitorId: monitor.id,
+          kind: CONTENT_ALERT_KIND,
+          severity: CONTENT_ALERT_SEVERITY,
+          details,
+        }),
+      );
+    }
+    for (const risk of newRisks) alertIds.push(insertRiskAlert(monitor.id, risk));
+
+    saveSnapshot();
+    const status = alertIds.length ? CHECK_STATUS.ALTERADO : CHECK_STATUS.OK;
+    record(status);
+    return { status, alertIds };
   }
 
   return async function checkMonitor(monitor) {
@@ -111,8 +164,9 @@ export function createChecker({
     const checkedAt = now().toISOString();
     try {
       const url = validateMonitorUrl(monitor.url);
-      const text = await fetchNormalizedText(url);
-      return withTransaction(db, () => compareWithLatest(monitor, text, checkedAt));
+      const { text, html } = await fetchPage(url);
+      const page = { text, ...(await analyzePage(url, html)) };
+      return withTransaction(db, () => compareWithLatest(monitor, page, checkedAt));
     } catch (error) {
       if (!SAFE_MESSAGES[error?.code]) {
         log('error', `Erro inesperado na checagem do monitor ${monitor.id}: ${error?.name ?? 'Erro'}`);

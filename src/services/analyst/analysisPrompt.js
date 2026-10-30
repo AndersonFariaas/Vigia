@@ -14,12 +14,42 @@ function formatLines(lines) {
   return lines.map((line) => `- ${sanitizeData(line)}`).join('\n');
 }
 
+// Alertas de risco guardam título e descrição; alertas de conteúdo guardam o diff.
+function isRiskDetails(details) {
+  return typeof details.titulo === 'string';
+}
+
+function describeContentChange(details) {
+  return [
+    `Total: ${details.addedCount} linha(s) adicionada(s), ${details.removedCount} removida(s).`,
+    '',
+    `<${DATA_TAG}>`,
+    'Linhas adicionadas (amostra):',
+    formatLines(details.added),
+    '',
+    'Linhas removidas (amostra):',
+    formatLines(details.removed),
+    `</${DATA_TAG}>`,
+  ];
+}
+
+function describeRisk(details) {
+  return [
+    `Sinal de risco: ${sanitizeData(details.titulo)}.`,
+    '',
+    `<${DATA_TAG}>`,
+    sanitizeData(details.descricao),
+    `</${DATA_TAG}>`,
+  ];
+}
+
 /**
  * Monta o prompt da análise. O conteúdo da página vai dentro de um bloco de dados
  * e o prompt manda tratá-lo como texto a ser analisado, nunca como instrução.
  */
 export function buildAnalysisPrompt({ monitor, details }) {
   const target = sanitizeData(monitor.label || monitor.url);
+  const change = isRiskDetails(details) ? describeRisk(details) : describeContentChange(details);
 
   return [
     'Você está analisando uma alteração detectada pelo Vigia em uma página web pública.',
@@ -32,15 +62,7 @@ export function buildAnalysisPrompt({ monitor, details }) {
     '',
     'ALTERAÇÃO',
     `Monitor: ${target}`,
-    `Total: ${details.addedCount} linha(s) adicionada(s), ${details.removedCount} removida(s).`,
-    '',
-    `<${DATA_TAG}>`,
-    'Linhas adicionadas (amostra):',
-    formatLines(details.added),
-    '',
-    'Linhas removidas (amostra):',
-    formatLines(details.removed),
-    `</${DATA_TAG}>`,
+    ...change,
     '',
     'TAREFA',
     '1. Resuma em até 5 frases, em português, o que mudou.',

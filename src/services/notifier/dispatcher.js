@@ -27,8 +27,44 @@ function describe(alert) {
   return `${details.addedCount} linha(s) adicionada(s), ${details.removedCount} removida(s)`;
 }
 
+const SEVERITY_LABELS = { alta: 'risco alto', media: 'risco médio', baixa: 'risco baixo' };
+
+/** E-mail de um sinal de risco (formulário de senha, domínio parecido, certificado...). */
+function renderRiskEmail(alert) {
+  const label = alert.monitor_label || alert.monitor_url;
+  const { details } = alert;
+  const severity = SEVERITY_LABELS[alert.severity] ?? 'risco';
+  const subject = `Vigia: ${severity} em ${label}`.replace(/[\r\n]+/g, ' ');
+
+  const html = `<!doctype html>
+<html lang="pt-BR">
+  <body style="margin:0;padding:24px;background:#f8fafc;color:#0f172a;font-family:Arial,sans-serif">
+    <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:24px">
+      <p style="margin:0 0 8px;color:#b91c1c;font-weight:bold">Vigia · ${escapeHtml(severity)}</p>
+      <h1 style="margin:0 0 12px;font-size:20px">${escapeHtml(details.titulo)}</h1>
+      <p style="margin:0 0 16px"><a href="${escapeHtml(alert.monitor_url)}" style="color:#2563eb">${escapeHtml(alert.monitor_url)}</a></p>
+      <p style="margin:0 0 16px">${escapeHtml(details.descricao)}</p>
+      <p style="margin:0;color:#64748b;font-size:13px">Verifique o site diretamente antes de digitar dados pessoais ou senhas.</p>
+    </div>
+  </body>
+</html>`;
+
+  const text = [
+    `${details.titulo} (${severity})`,
+    alert.monitor_url,
+    '',
+    details.descricao,
+    '',
+    'Verifique o site diretamente antes de digitar dados pessoais ou senhas.',
+  ].join('\n');
+
+  return { subject, html, text };
+}
+
 /** Monta o e-mail de um alerta. Função pura: fácil de testar e de revisar. */
 export function renderAlertEmail(alert) {
+  if (alert.kind === 'risco') return renderRiskEmail(alert);
+
   const label = alert.monitor_label || alert.monitor_url;
   const { details } = alert;
   const subject = `Vigia: alteração em ${label}`.replace(/[\r\n]+/g, ' ');

@@ -4,7 +4,7 @@ Monitor de páginas públicas. Quando o conteúdo muda, o Vigia cria um alerta e
 
 Projeto da **Hack Brasil 2026**. Este README explica não só como rodar, mas **por que** cada decisão foi tomada, para servir de material de estudo.
 
-> **Status:** Fase 1 (uso próprio, conta única, sem login). Fases 2 a 5 estão descritas no fim.
+> **Status:** Fase 2 (detectores de risco) implementada. Uso próprio, conta única, sem login. Fases 3 a 5 estão descritas no fim.
 
 ---
 
@@ -111,6 +111,12 @@ src/
 │   ├── diff/
 │   │   ├── hash.js          SHA-256
 │   │   └── textDiff.js      linhas adicionadas e removidas
+│   ├── detectors/           sinais de risco: formulários, scripts, certificado e domínios parecidos
+│   │   ├── pageSignals.js   lê formulários e scripts do HTML (parse5)
+│   │   ├── risks.js         transforma sinais em riscos com chave estável
+│   │   ├── lookalike.js     compara o domínio com marcas conhecidas (distância de edição)
+│   │   ├── certificate.js   lê a validade do certificado TLS
+│   │   └── referenceDomains.js  lista de domínios oficiais (editável)
 │   ├── notifier/
 │   │   ├── resendClient.js  envio pela Resend
 │   │   └── dispatcher.js    monta o e-mail (com escape) e envia o lote
@@ -230,6 +236,14 @@ A Devin entra como **análise de um alerta**, disparada pelo usuário no botão 
 
 Todo texto da página, do alerta ou do erro é exibido por interpolação do Vue, que escapa automaticamente. Os links usam `rel="noopener noreferrer"`.
 
+### 13. Alerta de risco só quando algo é novo
+
+Cada leitura gera um conjunto de **riscos com chave estável** (por exemplo, `senha-externa:dominio.net`). Um alerta só sai quando a chave aparece e não estava na leitura anterior. Assim, um site que continua com o mesmo risco não gera um alerta a cada checagem.
+
+Riscos que já valem na primeira leitura (senha enviada para outro domínio, domínio que imita uma marca, certificado vencido) alertam de cara. Riscos de mudança (campo de senha novo, script de outro domínio) só alertam depois da referência. Sem essa distinção, um login oficial alertaria só por existir.
+
+Leituras feitas antes da Fase 2 não guardam a lista de riscos. Nelas, a primeira checagem apenas registra o estado, sem alertar.
+
 ---
 
 ## API
@@ -306,7 +320,11 @@ Observações:
 - **Sem rate limit na API:** Fase 3.
 - **Falha de envio não é reenviada automaticamente:** o alerta fica marcado como `falhou`. Um reenvio manual ou uma fila de retentativa é trabalho da Fase 5.
 - **Conta única fixa** (`ownerId = 1`) na Fase 1.
-- **Severidade fixa em "média":** a classificação real vem na Fase 2.
+- **Mudança de conteúdo com severidade fixa "média":** só os riscos da Fase 2 têm severidade própria.
+- **Detectores só veem o HTML do servidor:** formulário ou script criado por JavaScript no navegador não aparece na leitura.
+- **Lista de marcas curta:** `referenceDomains.js` cobre algumas marcas. Um domínio fora da lista não é comparado.
+- **Falsos positivos de domínio parecido:** nomes de marcas comuns (ex.: "amazonas" perto de "amazon") podem ser marcados. Por isso nomes com menos de 5 letras não são comparados.
+- **Medição com fixtures sintéticos:** a taxa de falsos positivos e a detecção foram medidas em 4 páginas normais e 3 páginas de golpe criadas para o teste, não em um conjunto real. Os números não generalizam sem mais páginas.
 - **Normalização agressiva:** qualquer sequência de 16 ou mais caracteres `a-f`/`0-9` é tratada como hash. Por isso um número longo só com dígitos também sai do texto, e uma mudança nele não gera alerta.
 - **Sem histórico completo:** são guardados os 50 últimos snapshots por monitor.
 - **Retentativa em timeout:** uma checagem que esbarra em timeouts pode levar até ~100 segundos (três tentativas de 30 s, mais as esperas).
@@ -315,7 +333,7 @@ Observações:
 
 ## Próximas fases
 
-- **Fase 2:** detectores de risco em `src/services/detectors/` (alteração em `<form action>` e campos de senha, novos scripts externos, certificado SSL perto do vencimento, domínios parecidos por distância de edição), classificação de severidade e fixtures de phishing e páginas normais em `tests/fixtures/`, medindo falsos positivos.
+- **Fase 2 (implementada):** detectores de risco em `src/services/detectors/` (formulário de senha enviando para outro site, campo de senha novo ou com destino alterado, novos scripts de outros domínios, certificado SSL perto do vencimento ou vencido, domínio parecido com marca conhecida), com severidade por risco. Fixtures de golpe e páginas normais em `tests/fixtures/`. Nos fixtures: 0 falsos positivos e 3 de 3 golpes detectados.
 - **Fase 3:** autenticação (argon2 ou bcrypt), rate limit, painel completo e multiusuário real.
 - **Fase 4:** planos com limites, cobrança (Mercado Pago ou Stripe), termos de uso e LGPD (retenção de 90 dias e exclusão de conta).
 - **Fase 5:** logs estruturados, backup, deploy e teste de carga.

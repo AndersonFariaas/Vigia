@@ -71,7 +71,7 @@ describe('createFirecrawlClient', () => {
     assert.equal(captured.url, 'https://api.firecrawl.dev/v1/scrape');
     assert.equal(captured.init.method, 'POST');
     assert.equal(captured.init.headers.Authorization, 'Bearer fc-teste');
-    assert.deepEqual(captured.body.formats, ['markdown', 'html']);
+    assert.deepEqual(captured.body.formats, ['markdown', 'rawHtml']);
     // Sem maxAge 0 a Firecrawl devolve cache e mudanças reais passam como "ok".
     assert.equal(captured.body.maxAge, 0);
   });
