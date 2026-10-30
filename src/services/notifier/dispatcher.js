@@ -118,7 +118,7 @@ export function createDispatcher({
 
     for (const alert of pending) {
       try {
-        await sendEmail(renderAlertEmail(alert));
+        await sendEmail({ to: alert.owner_email, ...renderAlertEmail(alert) });
         alerts.markSent(alert.id, now().toISOString());
         sent += 1;
       } catch (error) {

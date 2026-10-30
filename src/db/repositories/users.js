@@ -1,14 +1,28 @@
 /**
- * Garante a conta única da Fase 1 (id = 1). O e-mail é o destino dos alertas,
- * então é atualizado a cada inicialização caso o .env mude.
- * Na Fase 3 isso vira o cadastro real de usuários.
+ * Contas de usuário. O e-mail é guardado em minúsculas: a normalização acontece
+ * na entrada (serviço de autenticação), então a busca aqui é por igualdade simples.
  */
-export const OWNER_ID = 1;
+export function createUsersRepository(db) {
+  const insertStmt = db.prepare('INSERT INTO users (email, password_hash) VALUES (?, ?)');
+  const findByEmailStmt = db.prepare('SELECT id, email, password_hash FROM users WHERE email = ?');
+  const findByIdStmt = db.prepare('SELECT id, email FROM users WHERE id = ?');
+  const setPasswordStmt = db.prepare('UPDATE users SET password_hash = ? WHERE id = ?');
 
-export function ensureOwner(db, email) {
-  db.prepare(`
-    INSERT INTO users (id, email) VALUES (?, ?)
-    ON CONFLICT (id) DO UPDATE SET email = excluded.email
-  `).run(OWNER_ID, email);
-  return OWNER_ID;
+  return {
+    create({ email, passwordHash = null }) {
+      return Number(insertStmt.run(email, passwordHash).lastInsertRowid);
+    },
+
+    findByEmail(email) {
+      return findByEmailStmt.get(email);
+    },
+
+    findById(id) {
+      return findByIdStmt.get(id);
+    },
+
+    setPassword(id, passwordHash) {
+      setPasswordStmt.run(passwordHash, id);
+    },
+  };
 }

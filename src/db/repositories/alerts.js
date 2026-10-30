@@ -39,10 +39,12 @@ export function createAlertsRepository(db) {
     ORDER BY a.created_at DESC, a.id DESC
     LIMIT ?
   `);
+  // O e-mail vai para o dono do monitor, não para um endereço fixo.
   const pendingWithMonitorStmt = db.prepare(`
-    SELECT a.*, m.url AS monitor_url, m.label AS monitor_label
+    SELECT a.*, m.url AS monitor_url, m.label AS monitor_label, u.email AS owner_email
     FROM alerts a
     JOIN monitors m ON m.id = a.monitor_id
+    JOIN users u ON u.id = m.user_id
     WHERE a.send_status = ?
     ORDER BY a.created_at ASC, a.id ASC
     LIMIT ?
