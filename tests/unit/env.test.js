@@ -6,7 +6,6 @@ const validEnv = {
   FIRECRAWL_API_KEY: 'fc-teste',
   RESEND_API_KEY: 're_teste',
   ALERT_EMAIL_FROM: 'Vigia <alertas@exemplo.com>',
-  ALERT_EMAIL_TO: 'dono@exemplo.com',
   DEVIN_API_KEY: 'cog_teste',
   DEVIN_ORG_ID: 'org-abc123',
 };
@@ -31,7 +30,6 @@ describe('loadConfig', () => {
           'FIRECRAWL_API_KEY',
           'RESEND_API_KEY',
           'ALERT_EMAIL_FROM',
-          'ALERT_EMAIL_TO',
           'DEVIN_API_KEY',
           'DEVIN_ORG_ID',
         ]) {
@@ -64,13 +62,15 @@ describe('loadConfig', () => {
     assert.equal(loadConfig({ ...validEnv, DEVIN_MAX_ACU_LIMIT: '5' }).DEVIN_MAX_ACU_LIMIT, 5);
   });
 
-  test('rejeita e-mail de destino inválido', () => {
-    assert.throws(() => loadConfig({ ...validEnv, ALERT_EMAIL_TO: 'sem-arroba' }), /ALERT_EMAIL_TO/);
+  test('cadastro aberto vem ligado e aceita só true ou false', () => {
+    assert.equal(loadConfig(validEnv).CADASTRO_ABERTO, true);
+    assert.equal(loadConfig({ ...validEnv, CADASTRO_ABERTO: 'false' }).CADASTRO_ABERTO, false);
+    assert.throws(() => loadConfig({ ...validEnv, CADASTRO_ABERTO: 'talvez' }), /CADASTRO_ABERTO/);
   });
 
   test('erro de configuração não expõe os valores dos segredos', () => {
     try {
-      loadConfig({ ...validEnv, ALERT_EMAIL_TO: 'sem-arroba', PORT: 'abc' });
+      loadConfig({ ...validEnv, DEVIN_MAX_ACU_LIMIT: 'abc', PORT: 'abc' });
       assert.fail('deveria ter lançado');
     } catch (error) {
       assert.equal(error.message.includes('fc-teste'), false);

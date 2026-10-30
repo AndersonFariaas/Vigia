@@ -14,12 +14,14 @@ describe('API /api/monitors', () => {
   let ctx;
   let server;
   let baseUrl;
+  let cookie;
 
   before(async () => {
     ctx = createTestContext();
+    cookie = ctx.cookieFor(ctx.ownerId);
     const app = createApp({
       repos: ctx.repos,
-      ownerId: ctx.ownerId,
+      auth: ctx.auth,
       checkMonitor: noopCheck,
       assertPublicUrl,
     });
@@ -38,7 +40,7 @@ describe('API /api/monitors', () => {
   const request = (path, options = {}) =>
     fetch(`${baseUrl}${path}`, {
       ...options,
-      headers: { 'Content-Type': 'application/json', ...options.headers },
+      headers: { 'Content-Type': 'application/json', Cookie: cookie, ...options.headers },
     });
 
   const postMonitor = (body) =>
@@ -48,6 +50,12 @@ describe('API /api/monitors', () => {
     const response = await request('/api/health');
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { status: 'ok' });
+  });
+
+  test('rotas de monitores exigem sessão: sem cookie, 401', async () => {
+    const response = await request('/api/monitors', { headers: { Cookie: '' } });
+    assert.equal(response.status, 401);
+    assert.equal((await response.json()).error, 'Entre na sua conta para continuar.');
   });
 
   test('helmet está ativo e x-powered-by está desligado', async () => {

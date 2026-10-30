@@ -158,6 +158,13 @@ select {
   flex-wrap: wrap;
 }
 
+.account {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
 .section-title {
   margin-top: var(--space-6);
 }

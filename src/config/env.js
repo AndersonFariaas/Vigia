@@ -18,7 +18,6 @@ const envSchema = z.object({
     .default(DEFAULT_FIRECRAWL_URL),
   RESEND_API_KEY: z.string(fieldError('deve ser um texto')).min(1, 'não pode ser vazia'),
   ALERT_EMAIL_FROM: z.string(fieldError('deve ser um texto')).min(1, 'não pode ser vazia'),
-  ALERT_EMAIL_TO: z.email(fieldError('deve ser um e-mail válido')),
   DEVIN_API_KEY: z.string(fieldError('deve ser um texto')).min(1, 'não pode ser vazia'),
   DEVIN_ORG_ID: z
     .string(fieldError('deve ser um texto'))
@@ -34,6 +33,11 @@ const envSchema = z.object({
     .string()
     .default(DEFAULT_CRON)
     .refine((expression) => cron.validate(expression), 'expressão cron inválida'),
+  // Cada conta recebe os alertas no próprio e-mail. Desligue para fechar o cadastro público.
+  CADASTRO_ABERTO: z
+    .enum(['true', 'false'], { error: 'deve ser true ou false' })
+    .default('true')
+    .transform((value) => value === 'true'),
   DATABASE_PATH: z.string().min(1).default(DEFAULT_DATABASE_PATH),
   HOST: z.string().min(1).default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),

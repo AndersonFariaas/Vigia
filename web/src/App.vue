@@ -1,6 +1,7 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
-import { api, ApiError } from './api.js';
+import { onMounted, onUnmounted, reactive, ref } from 'vue';
+import { api, ApiError, SESSION_EXPIRED_EVENT } from './api.js';
+import AuthPanel from './components/AuthPanel.vue';
 
 const FREQUENCY_OPTIONS = [
   { value: 15, label: 'A cada 15 minutos' },
@@ -46,6 +47,11 @@ const apiOnline = ref(null);
 const monitors = ref([]);
 const listState = ref('loading');
 const listError = ref('');
+
+// Conta logada. `sessionChecked` evita piscar o formulário de login antes de saber a sessão.
+const user = ref(null);
+const sessionChecked = ref(false);
+const sessionNotice = ref('');
 
 const form = reactive({ url: '', label: '', intervalMinutes: DEFAULT_INTERVAL_MINUTES });
 const formError = ref('');
@@ -229,10 +235,58 @@ async function removeMonitor(monitor) {
   }
 }
 
+function clearAccountState() {
+  monitors.value = [];
+  for (const state of [busy, notes, history, analyzing, analysisErrors]) {
+    for (const key of Object.keys(state)) delete state[key];
+  }
+}
+
+async function restoreSession() {
+  try {
+    user.value = (await api.session()).user;
+  } catch {
+    // Sem sessão válida: o painel mostra o formulário de entrada.
+    user.value = null;
+  } finally {
+    sessionChecked.value = true;
+  }
+  if (user.value) loadMonitors();
+}
+
+function onAuthenticated(account) {
+  user.value = account;
+  sessionNotice.value = '';
+  loadMonitors();
+}
+
+async function logout() {
+  try {
+    await api.logout();
+  } catch {
+    // O cookie expira sozinho; o painel esquece a conta mesmo assim.
+    console.warn('Não foi possível encerrar a sessão no servidor.');
+  }
+  user.value = null;
+  clearAccountState();
+}
+
+function onSessionExpired() {
+  if (!user.value) return;
+  user.value = null;
+  clearAccountState();
+  sessionNotice.value = 'Sua sessão expirou. Entre de novo para continuar.';
+}
+
 onMounted(() => {
   initTheme();
   checkHealth();
-  loadMonitors();
+  restoreSession();
+  window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+});
+
+onUnmounted(() => {
+  window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
 });
 </script>
 
@@ -253,13 +307,23 @@ onMounted(() => {
           <span class="status__dot" aria-hidden="true"></span>
           {{ apiOnline === null ? 'verificando API…' : apiOnline ? 'API online' : 'API offline' }}
         </p>
+        <template v-if="user">
+          <span class="account">{{ user.email }}</span>
+          <button class="button button--ghost button--small" type="button" @click="logout">Sair</button>
+        </template>
         <button class="button button--ghost button--small" type="button" @click="toggleTheme">
           {{ theme === 'dark' ? 'Modo claro' : 'Modo escuro' }}
         </button>
       </div>
     </header>
 
-    <section class="panel" aria-labelledby="new-monitor-title">
+    <AuthPanel
+      v-if="sessionChecked && !user"
+      :aviso="sessionNotice"
+      @autenticado="onAuthenticated"
+    />
+
+    <section v-if="user" class="panel" aria-labelledby="new-monitor-title">
       <p class="eyebrow">$ vigia add</p>
       <h2 id="new-monitor-title" class="panel__title">Monitorar uma página</h2>
 
@@ -322,7 +386,7 @@ onMounted(() => {
       <p v-if="formError" class="message message--error" role="alert">{{ formError }}</p>
     </section>
 
-    <section aria-labelledby="monitors-title">
+    <section v-if="user" aria-labelledby="monitors-title">
       <h2 id="monitors-title" class="panel__title section-title">Páginas monitoradas</h2>
 
       <p v-if="listState === 'loading'" class="message" role="status">Carregando…</p>
@@ -480,7 +544,7 @@ onMounted(() => {
     </section>
 
     <p class="card__note" style="margin-top: 32px">
-      Fase 1: sem login. Mantenha o servidor em 127.0.0.1 e não exponha esta página na internet.
+      Acesso por conta com senha. Antes de expor este painel na internet, use HTTPS.
     </p>
   </div>
 </template>

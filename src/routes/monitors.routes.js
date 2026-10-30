@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { asyncHandler, parseBody, ValidationError } from '../http.js';
 import { validateMonitorUrl } from '../security/urlValidator.js';
 import { CHECK_STATUS } from '../services/checker.js';
 import { buildAnalysisPrompt } from '../services/analyst/analysisPrompt.js';
@@ -9,16 +10,17 @@ const MAX_INTERVAL_MINUTES = 1440;
 const DEFAULT_INTERVAL_MINUTES = 60;
 const HISTORY_LIMIT = 20;
 const MAX_LABEL_LENGTH = 80;
+// Cada página é uma checagem a cada intervalo, com créditos da Firecrawl e, ao analisar, da Devin.
+export const MAX_MONITORS_PER_USER = 20;
 // IDs são inteiros positivos. Qualquer outra coisa é rejeitada antes de tocar no banco.
 const ID_PATTERN = /^[1-9]\d{0,9}$/;
 
-export class ValidationError extends Error {
-  constructor(details) {
-    super('Dados inválidos.');
-    this.name = 'ValidationError';
-    this.status = 400;
+class QuotaError extends Error {
+  constructor() {
+    super(`Você já atingiu o limite de ${MAX_MONITORS_PER_USER} páginas monitoradas.`);
+    this.name = 'QuotaError';
+    this.status = 409;
     this.expose = true;
-    this.details = details;
   }
 }
 
@@ -36,14 +38,6 @@ const createBodySchema = z.strictObject({
     .max(MAX_INTERVAL_MINUTES, `A frequência máxima é de ${MAX_INTERVAL_MINUTES} minutos.`)
     .default(DEFAULT_INTERVAL_MINUTES),
 });
-
-function parseBody(schema, body) {
-  const result = schema.safeParse(body ?? {});
-  if (!result.success) {
-    throw new ValidationError(result.error.issues.map((issue) => issue.message));
-  }
-  return result.data;
-}
 
 function parseId(raw) {
   if (!ID_PATTERN.test(raw)) throw new ValidationError(['ID inválido.']);
@@ -86,15 +80,11 @@ function toAnalysisDto(row) {
   return { sessionId: row.session_id, sessionUrl: row.session_url, createdAt: row.created_at };
 }
 
-const asyncHandler = (handler) => (req, res, next) => {
-  Promise.resolve(handler(req, res, next)).catch(next);
-};
-
 /**
- * Rotas de monitores. Todas usam `ownerId`: na Fase 1 é a conta única, mas o
- * filtro já está aqui para a Fase 3 trocar só a origem do id.
+ * Rotas de monitores. Todas exigem sessão (o middleware roda antes) e filtram por `req.user.id`:
+ * um usuário nunca enxerga nem altera o monitor de outro.
  */
-export function createMonitorsRouter({ repos, ownerId, checkMonitor, assertPublicUrl, analyst }) {
+export function createMonitorsRouter({ repos, checkMonitor, assertPublicUrl, analyst }) {
   const router = Router();
   const { monitors, snapshots, alerts, analyses } = repos;
   // Duplo clique não pode criar duas sessões (e duas cobranças) para o mesmo alerta.
@@ -103,7 +93,7 @@ export function createMonitorsRouter({ repos, ownerId, checkMonitor, assertPubli
   // Busca o monitor do dono ou responde 404. Retorna null quando não achou.
   function findOwnedMonitor(req, res) {
     const id = parseId(req.params.id);
-    const monitor = monitors.findByIdForUser(ownerId, id);
+    const monitor = monitors.findByIdForUser(req.user.id, id);
     if (!monitor) {
       res.status(404).json({ error: 'Monitor não encontrado.' });
       return null;
@@ -112,18 +102,21 @@ export function createMonitorsRouter({ repos, ownerId, checkMonitor, assertPubli
   }
 
   router.get('/', (req, res) => {
-    res.json(monitors.listByUser(ownerId).map(toMonitorDto));
+    res.json(monitors.listByUser(req.user.id).map(toMonitorDto));
   });
 
   router.post(
     '/',
     asyncHandler(async (req, res) => {
       const body = parseBody(createBodySchema, req.body);
+      const userId = req.user.id;
+      if (monitors.listByUser(userId).length >= MAX_MONITORS_PER_USER) throw new QuotaError();
+
       const url = validateMonitorUrl(body.url);
       await assertPublicUrl(url);
 
       const monitor = monitors.create({
-        userId: ownerId,
+        userId,
         url,
         label: body.label || null,
         intervalMinutes: body.intervalMinutes,
@@ -144,7 +137,7 @@ export function createMonitorsRouter({ repos, ownerId, checkMonitor, assertPubli
         return;
       }
 
-      const updated = monitors.findByIdForUser(ownerId, monitor.id);
+      const updated = monitors.findByIdForUser(req.user.id, monitor.id);
       res.json({ result, monitor: toMonitorDto(updated) });
     }),
   );
@@ -152,13 +145,13 @@ export function createMonitorsRouter({ repos, ownerId, checkMonitor, assertPubli
   router.get('/:id/snapshots', (req, res) => {
     const monitor = findOwnedMonitor(req, res);
     if (!monitor) return;
-    res.json(snapshots.listForUser(ownerId, monitor.id, HISTORY_LIMIT).map(toSnapshotDto));
+    res.json(snapshots.listForUser(req.user.id, monitor.id, HISTORY_LIMIT).map(toSnapshotDto));
   });
 
   router.get('/:id/alerts', (req, res) => {
     const monitor = findOwnedMonitor(req, res);
     if (!monitor) return;
-    res.json(alerts.listForUser(ownerId, monitor.id, HISTORY_LIMIT).map(toAlertDto));
+    res.json(alerts.listForUser(req.user.id, monitor.id, HISTORY_LIMIT).map(toAlertDto));
   });
 
   router.post(
@@ -168,7 +161,7 @@ export function createMonitorsRouter({ repos, ownerId, checkMonitor, assertPubli
       if (!monitor) return;
 
       const alertId = parseId(req.params.alertId);
-      const alert = alerts.findForUser(ownerId, alertId);
+      const alert = alerts.findForUser(req.user.id, alertId);
       if (!alert || alert.monitor_id !== monitor.id) {
         res.status(404).json({ error: 'Alerta não encontrado.' });
         return;
@@ -205,7 +198,7 @@ export function createMonitorsRouter({ repos, ownerId, checkMonitor, assertPubli
     const monitor = findOwnedMonitor(req, res);
     if (!monitor) return;
     // ON DELETE CASCADE remove snapshots e alertas junto.
-    monitors.deleteForUser(ownerId, monitor.id);
+    monitors.deleteForUser(req.user.id, monitor.id);
     res.status(204).end();
   });
 

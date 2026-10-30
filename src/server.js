@@ -8,9 +8,11 @@ import { applyMigrations } from './db/migrate.js';
 import { createAlertsRepository } from './db/repositories/alerts.js';
 import { createAnalysesRepository } from './db/repositories/analyses.js';
 import { createMonitorsRepository } from './db/repositories/monitors.js';
+import { createSessionsRepository } from './db/repositories/sessions.js';
 import { createSnapshotsRepository } from './db/repositories/snapshots.js';
-import { ensureOwner } from './db/repositories/users.js';
+import { createUsersRepository } from './db/repositories/users.js';
 import { assertPublicHost } from './security/ssrfGuard.js';
+import { createAuthService } from './services/auth/authService.js';
 import { createChecker } from './services/checker.js';
 import { createFirecrawlClient } from './services/scraper/firecrawlClient.js';
 import { createDispatcher } from './services/notifier/dispatcher.js';
@@ -35,14 +37,17 @@ async function main() {
 
   const db = openDatabase(config.DATABASE_PATH);
   applyMigrations(db);
-  const ownerId = ensureOwner(db, config.ALERT_EMAIL_TO);
 
   const repos = {
+    users: createUsersRepository(db),
+    sessions: createSessionsRepository(db),
     monitors: createMonitorsRepository(db),
     snapshots: createSnapshotsRepository(db),
     alerts: createAlertsRepository(db),
     analyses: createAnalysesRepository(db),
   };
+  repos.sessions.deleteExpired(new Date().toISOString());
+  const auth = createAuthService({ users: repos.users, sessions: repos.sessions });
 
   const scrape = createFirecrawlClient({
     apiKey: config.FIRECRAWL_API_KEY,
@@ -63,7 +68,8 @@ async function main() {
   const checkMonitor = createChecker({ db, ...repos, scrape, assertPublicUrl, log });
   const dispatchPending = createDispatcher({
     alerts: repos.alerts,
-    sendEmail: (message) => resend({ to: config.ALERT_EMAIL_TO, ...message }),
+    // O destinatário vem de cada alerta: é o e-mail do dono do monitor.
+    sendEmail: (message) => resend(message),
     log,
   });
   const runRound = createRoundRunner({
@@ -83,10 +89,12 @@ async function main() {
 
   const app = createApp({
     repos,
-    ownerId,
+    auth,
     checkMonitor,
     assertPublicUrl,
     analyst,
+    secureCookies: isProduction,
+    registrationOpen: config.CADASTRO_ABERTO,
     staticDir,
     log,
   });
@@ -94,7 +102,7 @@ async function main() {
   if (!LOOPBACK_HOSTS.has(config.HOST)) {
     log(
       'warn',
-      `HOST=${config.HOST} expõe o Vigia na rede. A Fase 1 NÃO tem autenticação: não exponha na internet.`,
+      `HOST=${config.HOST} expõe o Vigia na rede. Antes disso, coloque HTTPS na frente e revise o cadastro aberto.`,
     );
   }
 

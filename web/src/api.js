@@ -1,4 +1,6 @@
 const BASE_URL = '/api';
+// Avisa o painel quando a sessão cai no meio do uso. Quem escuta decide o que mostrar.
+export const SESSION_EXPIRED_EVENT = 'vigia:sessao-expirada';
 
 export class ApiError extends Error {
   constructor(message, status, details = []) {
@@ -29,6 +31,10 @@ async function request(path, { method = 'GET', body } = {}) {
 
   const data = await response.json().catch(() => null);
   if (!response.ok) {
+    // 401 fora das rotas de conta significa que a sessão acabou.
+    if (response.status === 401 && !path.startsWith('/auth/')) {
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
     throw new ApiError(data?.error ?? 'Erro inesperado. Tente novamente.', response.status, data?.details ?? []);
   }
   return data;
@@ -36,6 +42,10 @@ async function request(path, { method = 'GET', body } = {}) {
 
 export const api = {
   health: () => request('/health'),
+  session: () => request('/auth/sessao'),
+  register: (payload) => request('/auth/cadastro', { method: 'POST', body: payload }),
+  login: (payload) => request('/auth/entrar', { method: 'POST', body: payload }),
+  logout: () => request('/auth/sair', { method: 'POST' }),
   listMonitors: () => request('/monitors'),
   createMonitor: (payload) => request('/monitors', { method: 'POST', body: payload }),
   checkMonitor: (id) => request(`/monitors/${id}/check`, { method: 'POST' }),

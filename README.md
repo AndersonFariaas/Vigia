@@ -4,7 +4,7 @@ Monitor de páginas públicas. Quando o conteúdo muda, o Vigia cria um alerta e
 
 Projeto da **Hack Brasil 2026**. Este README explica não só como rodar, mas **por que** cada decisão foi tomada, para servir de material de estudo.
 
-> **Status:** Fase 2 (detectores de risco) implementada. Uso próprio, conta única, sem login. Fases 3 a 5 estão descritas no fim.
+> **Status:** Fase 3 (contas com senha e múltiplos usuários) implementada. Fases 4 e 5 estão descritas no fim.
 
 ---
 
@@ -41,6 +41,14 @@ Preencha o `.env` (veja [Variáveis de ambiente](#variáveis-de-ambiente)) e cri
 ```bash
 npm run migrate
 ```
+
+Crie sua conta pelo painel, na tela **Criar conta**. Se você já tinha a conta da Fase 1 (sem senha), defina a senha dela pelo terminal:
+
+```bash
+npm run usuario -- seu-email@exemplo.com
+```
+
+A senha aparece enquanto é digitada, então rode o comando sem ninguém olhando.
 
 Em desenvolvimento, use dois terminais: a API e o painel.
 
@@ -82,11 +90,11 @@ As variáveis são validadas na inicialização. **Se faltar alguma, o servidor 
 | `FIRECRAWL_BASE_URL` | não | `https://api.firecrawl.dev` | Endpoint da Firecrawl |
 | `RESEND_API_KEY` | sim | | Envio dos e-mails de alerta |
 | `ALERT_EMAIL_FROM` | sim | | Remetente (precisa de domínio verificado na Resend) |
-| `ALERT_EMAIL_TO` | sim | | Destino dos alertas |
 | `DEVIN_API_KEY` | sim | | Chave de service user da Devin (começa com `cog_`) |
 | `DEVIN_ORG_ID` | sim | | ID da organização na Devin (começa com `org-`) |
 | `DEVIN_MAX_ACU_LIMIT` | não | `2` | Teto de consumo por análise, em ACUs (1 a 10) |
 | `CHECK_CRON` | não | `*/15 * * * *` | Quando o agendador roda |
+| `CADASTRO_ABERTO` | não | `true` | Permite criar contas novas. Com `false`, só contas existentes entram |
 | `DATABASE_PATH` | não | `./data/vigia.db` | Arquivo SQLite |
 | `HOST` | não | `127.0.0.1` | Interface de escuta |
 | `PORT` | não | `3000` | Porta da API |
@@ -164,9 +172,14 @@ Um erro de configuração descoberto só quando alguém clica em "Checar" é uma
 - **WAL:** leituras do painel não travam a escrita do agendador.
 - **`foreign_keys = ON`:** o SQLite **ignora** `ON DELETE CASCADE` por padrão. Sem esta linha, apagar um monitor deixaria snapshots órfãos.
 
-### 3. Conta única hoje, `user_id` desde já
+### 3. Contas com senha, e cada conta vê só o próprio
 
-A Fase 1 tem uma conta só (`ownerId = 1`), mas todas as tabelas de dados e todas as consultas de usuário já filtram por `user_id`. Assim, a Fase 3 (multiusuário) troca só **de onde vem o id**, sem reescrever as consultas. O único método sem filtro é `findByIdUnscoped`, usado pelo agendador e proibido em rotas.
+Cada usuário entra com e-mail e senha. Todas as consultas de monitores e alertas filtram por `req.user.id`, vindo da sessão, nunca de algo que o cliente envia. O único método sem filtro é `findByIdUnscoped`, usado pelo agendador e proibido em rotas. Os testes de isolamento tentam ler, checar e remover o monitor de outra conta, e recebem 404 em todos os casos.
+
+- **Senha:** `scrypt` do próprio Node, sem pacote nativo. Os parâmetros ficam no hash, então dá para aumentar o custo no futuro sem quebrar contas antigas. A resposta de login é a mesma para e-mail desconhecido e senha errada, e o tempo também é parecido.
+- **Sessão:** token aleatório de 256 bits no cookie `HttpOnly` e `SameSite=Strict`. No banco fica só o hash do token. Vale 7 dias, e `Secure` liga em produção.
+- **Limite:** no login e no cadastro, 10 tentativas por IP a cada 15 minutos.
+- **Alertas:** cada alerta vai para o e-mail do dono do monitor.
 
 ### 4. SSRF: validar **todos** os IPs do domínio
 
@@ -253,6 +266,10 @@ Todas as respostas de erro são JSON, sem stack trace. O corpo é limitado a 10 
 | Método | Rota | O que faz |
 |---|---|---|
 | `GET` | `/api/health` | Status da API |
+| `POST` | `/api/auth/cadastro` | Cria a conta e abre a sessão (403 se o cadastro estiver fechado) |
+| `POST` | `/api/auth/entrar` | Abre a sessão (401 com mensagem genérica se as credenciais não batem) |
+| `POST` | `/api/auth/sair` | Encerra a sessão |
+| `GET` | `/api/auth/sessao` | Usuário da sessão atual, ou 401 |
 | `GET` | `/api/monitors` | Lista os monitores |
 | `POST` | `/api/monitors` | Cadastra (valida URL e SSRF; 409 se duplicado) |
 | `POST` | `/api/monitors/:id/check` | Checagem imediata |
@@ -316,10 +333,11 @@ Observações:
 ## Limitações conhecidas
 
 - **DNS rebinding:** o guard de SSRF valida o domínio **antes** da requisição. A Firecrawl conecta na infraestrutura dela, então o risco é reduzido, não eliminado. Fica para a Fase 2.
-- **Sem autenticação na Fase 1:** não exponha na internet. O servidor avisa no console se o `HOST` não for loopback.
-- **Sem rate limit na API:** Fase 3.
+- **Sem HTTPS dentro do Vigia:** o servidor não faz TLS. Para expor na internet, coloque um proxy com HTTPS na frente.
+- **E-mail não verificado:** qualquer pessoa pode cadastrar um endereço e receber alertas dele. A verificação por link fica para a Fase 4.
+- **Sem recuperação de senha:** quem esquecer a senha precisa de alguém com acesso ao servidor para rodar `npm run usuario`.
+- **Rate limit só no login e no cadastro:** o restante da API não tem limite de requisições. Falta isso antes de expor publicamente.
 - **Falha de envio não é reenviada automaticamente:** o alerta fica marcado como `falhou`. Um reenvio manual ou uma fila de retentativa é trabalho da Fase 5.
-- **Conta única fixa** (`ownerId = 1`) na Fase 1.
 - **Mudança de conteúdo com severidade fixa "média":** só os riscos da Fase 2 têm severidade própria.
 - **Detectores só veem o HTML do servidor:** formulário ou script criado por JavaScript no navegador não aparece na leitura.
 - **Lista de marcas curta:** `referenceDomains.js` cobre algumas marcas. Um domínio fora da lista não é comparado.
@@ -334,6 +352,6 @@ Observações:
 ## Próximas fases
 
 - **Fase 2 (implementada):** detectores de risco em `src/services/detectors/` (formulário de senha enviando para outro site, campo de senha novo ou com destino alterado, novos scripts de outros domínios, certificado SSL perto do vencimento ou vencido, domínio parecido com marca conhecida), com severidade por risco. Fixtures de golpe e páginas normais em `tests/fixtures/`. Nos fixtures: 0 falsos positivos e 3 de 3 golpes detectados.
-- **Fase 3:** autenticação (argon2 ou bcrypt), rate limit, painel completo e multiusuário real.
+- **Fase 3 (implementada):** contas com senha (scrypt), sessão em cookie `HttpOnly`, rate limit no login e no cadastro, cada conta isolada das outras e alertas no e-mail do dono.
 - **Fase 4:** planos com limites, cobrança (Mercado Pago ou Stripe), termos de uso e LGPD (retenção de 90 dias e exclusão de conta).
 - **Fase 5:** logs estruturados, backup, deploy e teste de carga.

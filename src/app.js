@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import express from 'express';
 import helmet from 'helmet';
 import { createMonitorsRouter } from './routes/monitors.routes.js';
+import { createAuthRouter, requireAuth } from './routes/auth.routes.js';
 
 const JSON_BODY_LIMIT = '10kb';
 
@@ -33,13 +34,17 @@ function errorHandler(log) {
 /**
  * Monta o Express sem subir o servidor, para os testes usarem uma instância própria.
  * `staticDir` só é passado em produção: em desenvolvimento quem serve o painel é o Vite.
+ * `secureCookies` liga o atributo Secure do cookie de sessão (use em produção com HTTPS).
  */
 export function createApp({
   repos,
-  ownerId,
+  auth,
   checkMonitor,
   assertPublicUrl,
   analyst,
+  secureCookies = false,
+  registrationOpen = true,
+  loginLimit = {},
   staticDir = null,
   log = () => {},
 }) {
@@ -52,9 +57,12 @@ export function createApp({
     res.json({ status: 'ok' });
   });
 
+  app.use('/api/auth', createAuthRouter({ auth, secureCookies, registrationOpen, loginLimit }));
+
   app.use(
     '/api/monitors',
-    createMonitorsRouter({ repos, ownerId, checkMonitor, assertPublicUrl, analyst }),
+    requireAuth(auth),
+    createMonitorsRouter({ repos, checkMonitor, assertPublicUrl, analyst }),
   );
 
   app.use('/api', (req, res) => {

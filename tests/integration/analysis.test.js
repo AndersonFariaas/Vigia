@@ -26,6 +26,7 @@ describe('análise de alertas com a Devin', () => {
   let server;
   let baseUrl;
   let analyst;
+  let cookie;
   let monitorId;
   let alertId;
   let otherMonitorId;
@@ -35,7 +36,7 @@ describe('análise de alertas com a Devin', () => {
     new Promise((resolve) => {
       const app = createApp({
         repos: ctx.repos,
-        ownerId: ctx.ownerId,
+        auth: ctx.auth,
         checkMonitor: noopCheck,
         assertPublicUrl: passPublic,
         analyst: nextAnalyst,
@@ -45,6 +46,7 @@ describe('análise de alertas com a Devin', () => {
 
   before(async () => {
     ctx = createTestContext();
+    cookie = ctx.cookieFor(ctx.ownerId);
     analyst = fakeAnalyst();
     const monitor = ctx.repos.monitors.create({
       userId: ctx.ownerId,
@@ -84,7 +86,10 @@ describe('análise de alertas com a Devin', () => {
   });
 
   const analyze = (monitor, alert) =>
-    fetch(`${baseUrl}/api/monitors/${monitor}/alerts/${alert}/analyze`, { method: 'POST' });
+    fetch(`${baseUrl}/api/monitors/${monitor}/alerts/${alert}/analyze`, {
+      method: 'POST',
+      headers: { Cookie: cookie },
+    });
 
   test('cria a análise, retorna 201 com o link e grava o vínculo', async () => {
     const response = await analyze(monitorId, alertId);
@@ -111,7 +116,9 @@ describe('análise de alertas com a Devin', () => {
   });
 
   test('a lista de alertas mostra o link da análise', async () => {
-    const response = await fetch(`${baseUrl}/api/monitors/${monitorId}/alerts`);
+    const response = await fetch(`${baseUrl}/api/monitors/${monitorId}/alerts`, {
+      headers: { Cookie: cookie },
+    });
     const [alert] = await response.json();
 
     assert.equal(alert.analysis.sessionUrl, 'https://app.devin.ai/sessions/devin-1');
@@ -147,6 +154,7 @@ describe('análise de alertas com a Devin', () => {
     try {
       const response = await fetch(`${url}/api/monitors/${monitorId}/alerts/${other}/analyze`, {
         method: 'POST',
+        headers: { Cookie: cookie },
       });
       assert.equal(response.status, 502);
       const body = await response.json();
