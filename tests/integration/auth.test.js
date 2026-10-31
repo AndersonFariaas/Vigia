@@ -55,6 +55,7 @@ describe('autenticação: cadastro, entrada, sessão e saída', () => {
       nome: '  Ana Lima  ',
       email: 'Ana@Exemplo.com',
       password: SENHA,
+      aceitouTermos: true,
     });
 
     assert.equal(response.status, 201);
@@ -72,6 +73,7 @@ describe('autenticação: cadastro, entrada, sessão e saída', () => {
       nome: 'Bia Costa',
       email: 'bia@exemplo.com',
       password: SENHA,
+      aceitouTermos: true,
     });
     assert.equal((await response.text()).includes(SENHA), false);
 
@@ -102,6 +104,7 @@ describe('autenticação: cadastro, entrada, sessão e saída', () => {
       nome: 'Outra Ana',
       email: 'ana@exemplo.com',
       password: SENHA,
+      aceitouTermos: true,
     });
     assert.equal(response.status, 409);
     assert.equal((await response.json()).error, 'Não foi possível criar a conta com estes dados.');

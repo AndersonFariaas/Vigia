@@ -19,6 +19,9 @@ import { createDispatcher } from './services/notifier/dispatcher.js';
 import { createResendClient } from './services/notifier/resendClient.js';
 import { createDevinClient } from './services/analyst/devinClient.js';
 import { createRoundRunner, startScheduler } from './services/scheduler/jobs.js';
+import { createRetention } from './services/retention.js';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost']);
 const WEB_DIST = join(dirname(fileURLToPath(import.meta.url)), '..', 'web', 'dist');
@@ -81,6 +84,12 @@ async function main() {
   });
   const scheduler = startScheduler({ expression: config.CHECK_CRON, runRound, log });
 
+  // Retenção de 90 dias: roda ao iniciar e depois uma vez por dia.
+  const purgeExpiredData = createRetention({ snapshots: repos.snapshots, alerts: repos.alerts, log });
+  purgeExpiredData();
+  const retentionTimer = setInterval(purgeExpiredData, DAY_MS);
+  retentionTimer.unref();
+
   const isProduction = process.env.NODE_ENV === 'production';
   const staticDir = isProduction && existsSync(WEB_DIST) ? WEB_DIST : null;
   if (isProduction && !staticDir) {
@@ -112,6 +121,7 @@ async function main() {
 
   const shutdown = () => {
     scheduler.stop();
+    clearInterval(retentionTimer);
     server.close(() => {
       db.close();
       process.exit(0);

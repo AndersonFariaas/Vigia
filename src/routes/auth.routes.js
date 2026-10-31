@@ -2,6 +2,7 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { asyncHandler, parseBody } from '../http.js';
+import { TERMS_VERSION } from '../legal/termos.js';
 import { SESSION_COOKIE, SESSION_DAYS } from '../security/sessionToken.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -31,6 +32,17 @@ const registerSchema = z.strictObject({
     .string({ error: 'Informe a senha.' })
     .min(MIN_PASSWORD_LENGTH, `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`)
     .max(MAX_PASSWORD_LENGTH, `A senha pode ter no máximo ${MAX_PASSWORD_LENGTH} caracteres.`),
+  // O aceite é obrigatório: sem ele a conta não é criada.
+  aceitouTermos: z.literal(true, {
+    error: 'Você precisa aceitar os Termos de Uso e a Política de Privacidade.',
+  }),
+});
+
+const deleteAccountSchema = z.strictObject({
+  senhaAtual: z
+    .string({ error: 'Informe a senha atual para excluir a conta.' })
+    .min(1, 'Informe a senha atual para excluir a conta.')
+    .max(MAX_PASSWORD_LENGTH),
 });
 
 const loginSchema = z.strictObject({
@@ -114,7 +126,8 @@ export function createAuthRouter({ auth, secureCookies = false, registrationOpen
         return;
       }
 
-      const { user, token } = await auth.register(parseBody(registerSchema, req.body));
+      const body = parseBody(registerSchema, req.body);
+      const { user, token } = await auth.register({ ...body, termosVersao: TERMS_VERSION });
       res.cookie(SESSION_COOKIE, token, cookieOptions(secureCookies));
       res.status(201).json({ user });
     }),
@@ -150,6 +163,18 @@ export function createAuthRouter({ auth, secureCookies = false, registrationOpen
       const body = parseBody(accountSchema, req.body);
       const user = await auth.updateAccount(req.user.id, body);
       res.json({ user });
+    }),
+  );
+
+  // Exclusão de conta (LGPD): apaga a conta e todos os dados dela, com confirmação da senha.
+  router.delete(
+    '/conta',
+    requireAuth(auth),
+    asyncHandler(async (req, res) => {
+      const body = parseBody(deleteAccountSchema, req.body);
+      await auth.deleteAccount(req.user.id, body.senhaAtual);
+      res.clearCookie(SESSION_COOKIE, cookieOptions(secureCookies));
+      res.status(204).end();
     }),
   );
 

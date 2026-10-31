@@ -4,8 +4,11 @@
  */
 export function createUsersRepository(db) {
   const insertStmt = db.prepare(
-    'INSERT INTO users (email, password_hash, nome) VALUES (?, ?, ?)',
+    `INSERT INTO users (email, password_hash, nome, termos_versao, termos_aceitos_em)
+     VALUES (?, ?, ?, ?, ?)`,
   );
+  // ON DELETE CASCADE leva junto as páginas, os snapshots, os alertas e as sessões.
+  const deleteStmt = db.prepare('DELETE FROM users WHERE id = ?');
   const findByEmailStmt = db.prepare(
     'SELECT id, email, nome, password_hash FROM users WHERE email = ?',
   );
@@ -19,8 +22,13 @@ export function createUsersRepository(db) {
   );
 
   return {
-    create({ email, passwordHash = null, nome = null }) {
-      return Number(insertStmt.run(email, passwordHash, nome).lastInsertRowid);
+    create({ email, passwordHash = null, nome = null, termosVersao = null, termosAceitosEm = null }) {
+      const result = insertStmt.run(email, passwordHash, nome, termosVersao, termosAceitosEm);
+      return Number(result.lastInsertRowid);
+    },
+
+    delete(id) {
+      deleteStmt.run(id);
     },
 
     findByEmail(email) {

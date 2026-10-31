@@ -1,6 +1,8 @@
 <script setup>
 import { computed, reactive, ref } from 'vue';
 import { api, ApiError } from '../api.js';
+import LegalDialog from './LegalDialog.vue';
+import { PRIVACIDADE, TERMOS } from '../legal.js';
 
 const MIN_NAME_LENGTH = 2;
 const MIN_PASSWORD_LENGTH = 10;
@@ -15,9 +17,12 @@ const emit = defineEmits(['update:mode', 'autenticado']);
 const isSignUp = computed(() => props.mode === 'cadastro');
 
 const form = reactive({ nome: '', email: '', password: '', confirmation: '' });
-const errors = reactive({ nome: '', email: '', password: '', confirmation: '', general: '' });
+const errors = reactive({ nome: '', email: '', password: '', confirmation: '', termos: '', general: '' });
 const showPassword = ref(false);
 const submitting = ref(false);
+// Aceite dos termos (obrigatório no cadastro) e o documento aberto pelos links.
+const aceitou = ref(false);
+const legalOpen = ref(null);
 
 function clearErrors() {
   for (const key of Object.keys(errors)) errors[key] = '';
@@ -45,6 +50,9 @@ function validate() {
   if (isSignUp.value && form.confirmation !== form.password) {
     errors.confirmation = 'As senhas não coincidem.';
   }
+  if (isSignUp.value && !aceitou.value) {
+    errors.termos = 'Para criar a conta, aceite os Termos de uso e a Política de privacidade.';
+  }
   return !Object.values(errors).some(Boolean);
 }
 
@@ -61,7 +69,7 @@ async function submit() {
   const payload = { email: form.email.trim(), password: form.password };
   try {
     const { user } = isSignUp.value
-      ? await api.register({ ...payload, nome: form.nome.trim() })
+      ? await api.register({ ...payload, nome: form.nome.trim(), aceitouTermos: true })
       : await api.login(payload);
     form.password = '';
     form.confirmation = '';
@@ -173,6 +181,19 @@ async function submit() {
         </span>
       </div>
 
+      <div v-if="isSignUp" class="field">
+        <label class="check">
+          <input v-model="aceitou" type="checkbox" :aria-invalid="Boolean(errors.termos)" :disabled="submitting" />
+          <span>
+            Li e aceito os
+            <button class="link-button" type="button" @click="legalOpen = 'termos'">Termos de uso</button>
+            e a
+            <button class="link-button" type="button" @click="legalOpen = 'privacidade'">Política de privacidade</button>.
+          </span>
+        </label>
+        <span v-if="errors.termos" class="field__error">{{ errors.termos }}</span>
+      </div>
+
       <p v-if="errors.general" class="message message--error" role="alert">{{ errors.general }}</p>
 
       <button class="button button--primary" type="submit" :disabled="submitting">
@@ -180,5 +201,11 @@ async function submit() {
         {{ submitting ? 'Aguarde…' : isSignUp ? 'Criar conta' : 'Entrar' }}
       </button>
     </form>
+
+    <LegalDialog
+      :open="legalOpen !== null"
+      :doc="legalOpen === 'privacidade' ? PRIVACIDADE : TERMOS"
+      @close="legalOpen = null"
+    />
   </section>
 </template>

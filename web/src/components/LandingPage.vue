@@ -1,7 +1,13 @@
 <script setup>
+import { ref } from 'vue';
 import { PRODUCT_NAME } from '../brand.js';
+import LegalDialog from './LegalDialog.vue';
+import { PRIVACIDADE, TERMOS } from '../legal.js';
 
 const emit = defineEmits(['open-auth']);
+
+// Documento legal aberto pelos links do rodapé: 'termos', 'privacidade' ou null.
+const legalOpen = ref(null);
 </script>
 
 <template>
@@ -142,7 +148,15 @@ const emit = defineEmits(['open-auth']);
         <a href="#como-funciona">Como funciona</a>
         <a href="#recursos">Recursos</a>
         <a href="#exemplos">Exemplos</a>
+        <button class="landing-footer__link" type="button" @click="legalOpen = 'termos'">Termos de uso</button>
+        <button class="landing-footer__link" type="button" @click="legalOpen = 'privacidade'">Privacidade</button>
       </nav>
     </footer>
+
+    <LegalDialog
+      :open="legalOpen !== null"
+      :doc="legalOpen === 'privacidade' ? PRIVACIDADE : TERMOS"
+      @close="legalOpen = null"
+    />
   </div>
 </template>
