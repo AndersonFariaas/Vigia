@@ -52,7 +52,13 @@ export function createAlertsRepository(db) {
   const markSentStmt = db.prepare(`
     UPDATE alerts SET send_status = ?, sent_at = ? WHERE id = ?
   `);
-  const markFailedStmt = db.prepare('UPDATE alerts SET send_status = ? WHERE id = ?');
+  // Cada falha conta uma tentativa. Ao chegar no limite, o alerta para de tentar e fica 'falhou'.
+  const markFailedStmt = db.prepare(`
+    UPDATE alerts
+    SET send_attempts = send_attempts + 1,
+        send_status = CASE WHEN send_attempts + 1 >= ? THEN ? ELSE ? END
+    WHERE id = ?
+  `);
   const deleteOlderStmt = db.prepare('DELETE FROM alerts WHERE created_at < ?');
 
   return {
@@ -78,8 +84,8 @@ export function createAlertsRepository(db) {
       markSentStmt.run(SEND_STATUS.ENVIADO, sentAt, id);
     },
 
-    markFailed(id) {
-      markFailedStmt.run(SEND_STATUS.FALHOU, id);
+    markFailed(id, maxAttempts) {
+      markFailedStmt.run(maxAttempts, SEND_STATUS.FALHOU, SEND_STATUS.PENDENTE, id);
     },
 
     // Retenção (LGPD): remove alertas antes do limite. A análise da Devin cai junto (cascata).
