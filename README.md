@@ -4,7 +4,7 @@ Monitor de páginas públicas. Quando o conteúdo muda, o Vigia cria um alerta e
 
 Projeto da **Hack Brasil 2026**. Este README explica não só como rodar, mas **por que** cada decisão foi tomada, para servir de material de estudo.
 
-> **Status:** Fase 3 (contas com senha e múltiplos usuários) implementada. Fases 4 e 5 estão descritas no fim.
+> **Status:** Fase 3 (contas com senha e múltiplos usuários) e a parte de LGPD da Fase 4 (termos, retenção de 90 dias e exclusão de conta) implementadas. Planos, cobrança e a Fase 5 estão descritos no fim.
 
 ---
 
@@ -174,7 +174,7 @@ Um erro de configuração descoberto só quando alguém clica em "Checar" é uma
 
 ### 3. Contas com senha, e cada conta vê só o próprio
 
-Cada usuário entra com e-mail e senha. Todas as consultas de monitores e alertas filtram por `req.user.id`, vindo da sessão, nunca de algo que o cliente envia. O único método sem filtro é `findByIdUnscoped`, usado pelo agendador e proibido em rotas. Os testes de isolamento tentam ler, checar e remover o monitor de outra conta, e recebem 404 em todos os casos.
+Cada usuário entra com e-mail e senha. Todas as consultas de monitores e alertas filtram por `req.user.id`, vindo da sessão, nunca de algo que o cliente envia. A única consulta sem usuário é `findDue`, usada pelo agendador e proibida em rotas. Os testes de isolamento tentam ler, checar e remover o monitor de outra conta, e recebem 404 em todos os casos.
 
 - **Senha:** `scrypt` do próprio Node, sem pacote nativo. Os parâmetros ficam no hash, então dá para aumentar o custo no futuro sem quebrar contas antigas. A resposta de login é a mesma para e-mail desconhecido e senha errada, e o tempo também é parecido.
 - **Sessão:** token aleatório de 256 bits no cookie `HttpOnly` e `SameSite=Strict`. No banco fica só o hash do token. Vale 7 dias, e `Secure` liga em produção.
@@ -266,9 +266,11 @@ Todas as respostas de erro são JSON, sem stack trace. O corpo é limitado a 10 
 | Método | Rota | O que faz |
 |---|---|---|
 | `GET` | `/api/health` | Status da API |
-| `POST` | `/api/auth/cadastro` | Cria a conta (nome, e-mail e senha) e abre a sessão (403 se o cadastro estiver fechado) |
+| `POST` | `/api/auth/cadastro` | Cria a conta (nome, e-mail, senha e aceite dos termos) e abre a sessão (403 se o cadastro estiver fechado; 429 após muitas tentativas) |
 | `POST` | `/api/auth/entrar` | Abre a sessão (401 com mensagem genérica se as credenciais não batem) |
 | `POST` | `/api/auth/sair` | Encerra a sessão |
+| `PATCH` | `/api/auth/conta` | Altera nome, e-mail ou senha. Trocar a senha exige a senha atual |
+| `DELETE` | `/api/auth/conta` | Exclui a conta e todos os dados dela (monitores, snapshots e alertas), com a senha atual |
 | `GET` | `/api/auth/sessao` | Usuário da sessão atual, ou 401 |
 | `GET` | `/api/monitors` | Lista os monitores |
 | `POST` | `/api/monitors` | Cadastra (valida URL e SSRF; 409 se duplicado) |
@@ -352,6 +354,6 @@ Observações:
 ## Próximas fases
 
 - **Fase 2 (implementada):** detectores de risco em `src/services/detectors/` (formulário de senha enviando para outro site, campo de senha novo ou com destino alterado, novos scripts de outros domínios, certificado SSL perto do vencimento ou vencido, domínio parecido com marca conhecida), com severidade por risco. Fixtures de golpe e páginas normais em `tests/fixtures/`. Nos fixtures: 0 falsos positivos e 3 de 3 golpes detectados.
-- **Fase 3 (implementada):** contas com senha (scrypt), sessão em cookie `HttpOnly`, rate limit no login e no cadastro, cada conta isolada das outras e alertas no e-mail do dono.
-- **Fase 4:** planos com limites, cobrança (Mercado Pago ou Stripe), termos de uso e LGPD (retenção de 90 dias e exclusão de conta).
+- **Fase 3 (implementada):** contas com senha (scrypt), sessão em cookie `HttpOnly`, rate limit por IP no login, no cadastro e nas trocas de senha (só as respostas de erro contam), cada conta isolada das outras e alertas no e-mail do dono.
+- **Fase 4 (parcial):** termos de uso com aceite no cadastro, retenção de 90 dias e exclusão de conta (LGPD) implementados. Pendentes: planos com limites e cobrança (Mercado Pago ou Stripe).
 - **Fase 5:** logs estruturados, backup, deploy e teste de carga.
