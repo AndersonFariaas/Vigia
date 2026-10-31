@@ -17,7 +17,15 @@ const emailSchema = z
   .toLowerCase()
   .pipe(z.email({ error: 'Informe um e-mail válido.' }));
 
+const NAME_MIN_LENGTH = 2;
+const NAME_MAX_LENGTH = 80;
+
 const registerSchema = z.strictObject({
+  nome: z
+    .string({ error: 'Informe seu nome.' })
+    .trim()
+    .min(NAME_MIN_LENGTH, `O nome deve ter pelo menos ${NAME_MIN_LENGTH} caracteres.`)
+    .max(NAME_MAX_LENGTH, `O nome pode ter no máximo ${NAME_MAX_LENGTH} caracteres.`),
   email: emailSchema,
   password: z
     .string({ error: 'Informe a senha.' })

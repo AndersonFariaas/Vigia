@@ -266,7 +266,7 @@ Todas as respostas de erro são JSON, sem stack trace. O corpo é limitado a 10 
 | Método | Rota | O que faz |
 |---|---|---|
 | `GET` | `/api/health` | Status da API |
-| `POST` | `/api/auth/cadastro` | Cria a conta e abre a sessão (403 se o cadastro estiver fechado) |
+| `POST` | `/api/auth/cadastro` | Cria a conta (nome, e-mail e senha) e abre a sessão (403 se o cadastro estiver fechado) |
 | `POST` | `/api/auth/entrar` | Abre a sessão (401 com mensagem genérica se as credenciais não batem) |
 | `POST` | `/api/auth/sair` | Encerra a sessão |
 | `GET` | `/api/auth/sessao` | Usuário da sessão atual, ou 401 |

@@ -35,16 +35,16 @@ export function createAuthService({ users, sessions, now = () => new Date() }) {
   }
 
   return {
-    async register({ email, password }) {
+    async register({ nome, email, password }) {
       const passwordHash = await hashPassword(password);
       let userId;
       try {
-        userId = users.create({ email, passwordHash });
+        userId = users.create({ email, passwordHash, nome });
       } catch (error) {
         if (error.message?.includes('UNIQUE constraint failed')) throw new AccountExistsError();
         throw error;
       }
-      return { user: { id: userId, email }, token: startSession(userId) };
+      return { user: { id: userId, email, nome }, token: startSession(userId) };
     },
 
     async login({ email, password }) {
@@ -53,7 +53,7 @@ export function createAuthService({ users, sessions, now = () => new Date() }) {
       // Conta sem senha (vinda da Fase 1) não entra até alguém definir uma pelo comando "npm run usuario".
       if (!user?.password_hash || !ok) return null;
 
-      return { user: { id: user.id, email: user.email }, token: startSession(user.id) };
+      return { user: { id: user.id, email: user.email, nome: user.nome }, token: startSession(user.id) };
     },
 
     // Abre uma sessão para um usuário já existente. Os testes usam para montar o cookie sem login.
