@@ -45,7 +45,7 @@ const legalOpen = ref(null);
             src="/shot-painel.png"
             width="2000"
             height="1200"
-            alt="Painel do vigia com páginas monitoradas, um alerta de preço e um risco alto, com dados fictícios"
+            alt="Painel do Vigia com páginas monitoradas, um alerta de preço e um risco alto, com dados fictícios"
           />
         </figure>
         <p class="chip chip--alert">Alteração detectada · R$ 49,90 → R$ 39,90</p>
