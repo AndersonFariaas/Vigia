@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, reactive, ref } from 'vue';
 import { api, ApiError, SESSION_EXPIRED_EVENT } from './api.js';
 import AuthPanel from './components/AuthPanel.vue';
+import { PRODUCT_NAME } from './brand.js';
 
 const FREQUENCY_OPTIONS = [
   { value: 15, label: 'A cada 15 minutos' },
@@ -291,10 +292,20 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app">
+  <div :class="['app', { 'app--auth': !user }]">
     <header class="topbar">
       <h1 class="brand">
-        <span class="brand__prompt" aria-hidden="true">$</span>vigia
+        <svg class="brand__icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <path
+            d="M3 16 C8 8.5 24 8.5 29 16 C24 23.5 8 23.5 3 16 Z"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linejoin="round"
+          />
+          <circle cx="16" cy="16" r="5.2" fill="currentColor" />
+          <circle cx="16" cy="16" r="2.2" class="brand__pupil" />
+        </svg>{{ PRODUCT_NAME }}
         <span class="brand__hint">Monitor de páginas com alerta por e-mail</span>
       </h1>
 
@@ -543,7 +554,7 @@ onUnmounted(() => {
       </TransitionGroup>
     </section>
 
-    <p class="card__note" style="margin-top: 32px">
+    <p v-if="user" class="card__note" style="margin-top: 32px">
       Acesso por conta com senha. Antes de expor este painel na internet, use HTTPS.
     </p>
   </div>

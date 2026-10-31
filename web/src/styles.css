@@ -138,9 +138,16 @@ select {
   margin: 0;
 }
 
-.brand__prompt {
+.brand__icon {
+  width: 30px;
+  height: 30px;
+  margin-right: var(--space-2);
   color: var(--accent);
-  margin-right: var(--space-1);
+  vertical-align: -8px;
+}
+
+.brand__pupil {
+  fill: var(--surface);
 }
 
 .brand__hint {
@@ -553,22 +560,135 @@ select {
   --overlay: rgb(15 23 42 / 0.6);
 }
 
+/*
+ * Tela sem login: ocupa a altura da janela e centraliza a proposta e o card nela,
+ * para não haver rolagem em telas de computador.
+ */
+.app--auth {
+  display: flex;
+  flex-direction: column;
+  max-width: 1120px;
+  min-height: 100dvh;
+}
+
+.app--auth .landing {
+  flex: 1;
+  align-content: center;
+  margin-top: 0;
+  padding: var(--space-6) 0;
+}
+
+.landing {
+  display: grid;
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+  align-items: center;
+}
+
+.landing__title {
+  margin-bottom: var(--space-4);
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+
+.landing__lead {
+  max-width: 56ch;
+  font-size: 17px;
+  color: var(--muted);
+}
+
+.landing__features {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-6);
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+}
+
+.landing__features li {
+  position: relative;
+  padding-left: var(--space-4);
+}
+
+.landing__features li::before {
+  content: '';
+  position: absolute;
+  top: 0.6em;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Captura do painel com dados fictícios. Aparece só em telas largas e altas. */
+.landing__shot {
+  display: none;
+  margin: 32px 0 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 48px rgb(15 23 42 / 0.14);
+}
+
+.landing__shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Em telas largas, proposta e card lado a lado. */
+@media (min-width: 960px) {
+  .landing {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: 72px;
+  }
+
+  .landing__title {
+    font-size: clamp(36px, 3.4vw, 48px);
+  }
+
+  .landing__shot {
+    display: block;
+  }
+}
+
+/* Janelas de altura média: sai a lista de pontos, para o snapshot caber sem rolagem. */
+@media (min-width: 960px) and (max-height: 960px) {
+  .landing__features {
+    display: none;
+  }
+}
+
+/* Janelas baixas: sai também o snapshot, e o título diminui, para nada passar da tela. */
+@media (min-width: 960px) and (max-height: 800px) {
+  .landing__title {
+    font-size: 36px;
+    margin-bottom: var(--space-3);
+  }
+
+  .landing__shot {
+    display: none;
+  }
+}
+
 .auth-card {
-  max-width: 520px;
-  margin: var(--space-6) auto 0;
-  padding: var(--space-6);
+  padding: 48px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
 
 .auth-card__title {
-  font-size: 24px;
-  line-height: 1.2;
-  margin-bottom: var(--space-2);
+  font-size: 36px;
+  line-height: 1.15;
+  margin-bottom: var(--space-3);
 }
 
 .auth-card__text {
+  font-size: 17px;
   color: var(--muted);
 }
 
@@ -576,11 +696,13 @@ select {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
-  margin-top: var(--space-6);
+  margin-top: var(--space-8, 32px);
 }
 
 .auth-card__actions .button {
   flex: 1 1 160px;
+  min-height: 60px;
+  font-size: 17px;
 }
 
 .modal-overlay {
@@ -700,6 +822,15 @@ select {
 @media (max-width: 639px) {
   .auth-card {
     padding: var(--space-4);
+  }
+
+  /* No celular, a lista de pontos sai para a tela caber sem rolagem. O texto acima já explica o produto. */
+  .landing__features {
+    display: none;
+  }
+
+  .app--auth .landing {
+    padding: var(--space-4) 0;
   }
 
   .modal-overlay {
