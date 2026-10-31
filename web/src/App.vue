@@ -308,7 +308,7 @@ onUnmounted(() => {
           {{ apiOnline === null ? 'verificando API…' : apiOnline ? 'API online' : 'API offline' }}
         </p>
         <template v-if="user">
-          <span class="account">{{ user.email }}</span>
+          <span class="account">{{ user.nome || user.email }}</span>
           <button class="button button--ghost button--small" type="button" @click="logout">Sair</button>
         </template>
         <button class="button button--ghost button--small" type="button" @click="toggleTheme">

@@ -548,6 +548,196 @@ select {
   }
 }
 
+/* Tela de entrada: card com os botões e modal com o formulário. */
+:root {
+  --overlay: rgb(15 23 42 / 0.6);
+}
+
+.auth-card {
+  max-width: 520px;
+  margin: var(--space-6) auto 0;
+  padding: var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.auth-card__title {
+  font-size: 24px;
+  line-height: 1.2;
+  margin-bottom: var(--space-2);
+}
+
+.auth-card__text {
+  color: var(--muted);
+}
+
+.auth-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.auth-card__actions .button {
+  flex: 1 1 160px;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--overlay);
+}
+
+.modal {
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100dvh - 2 * var(--space-4));
+  overflow-y: auto;
+  padding: var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 24px 48px rgb(15 23 42 / 0.25);
+}
+
+.modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.modal__title {
+  font-size: 20px;
+}
+
+.modal__close {
+  flex: 0 0 var(--touch-target);
+  width: var(--touch-target);
+  height: var(--touch-target);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal__close:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.modal__submit {
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.modal__switch {
+  margin-top: var(--space-4);
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.link-button {
+  min-height: var(--touch-target);
+  padding: 0 var(--space-1);
+  border: 0;
+  background: none;
+  color: var(--link);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.field__error {
+  font-size: 13px;
+  color: var(--danger);
+}
+
+.input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+/* No modal, os campos sempre empilham, mesmo em telas largas. */
+.modal .form {
+  grid-template-columns: 1fr;
+}
+
+.input-group {
+  position: relative;
+  display: flex;
+}
+
+.input-group .input {
+  padding-right: 88px;
+}
+
+.input-group__toggle {
+  position: absolute;
+  top: 50%;
+  right: var(--space-1);
+  transform: translateY(-50%);
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--link);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 639px) {
+  .auth-card {
+    padding: var(--space-4);
+  }
+
+  .modal-overlay {
+    place-items: end center;
+    padding: 0;
+  }
+
+  .modal {
+    max-width: none;
+    max-height: 92dvh;
+    padding: var(--space-6) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom));
+    border-radius: 16px 16px 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes overlay-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes modal-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.98);
+    }
+  }
+
+  .modal-overlay {
+    animation: overlay-in 0.2s ease both;
+  }
+
+  .modal {
+    animation: modal-in 0.25s ease both;
+  }
+}
+
 /*
  * Movimento. Tudo fica dentro de no-preference: quem pede menos animação não recebe nada disso.
  * Só transform e opacity animam, para não forçar recálculo de layout.

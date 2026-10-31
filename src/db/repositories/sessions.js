@@ -8,7 +8,7 @@ export function createSessionsRepository(db) {
     VALUES (?, ?, ?)
   `);
   const findActiveStmt = db.prepare(`
-    SELECT u.id, u.email
+    SELECT u.id, u.email, u.nome
     FROM sessions s
     JOIN users u ON u.id = s.user_id
     WHERE s.token_hash = ? AND s.expires_at > ?

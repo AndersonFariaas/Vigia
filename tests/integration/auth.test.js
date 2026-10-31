@@ -51,10 +51,16 @@ describe('autenticação: cadastro, entrada, sessão e saída', () => {
     });
 
   test('cadastro cria a conta, devolve o usuário e define o cookie de sessão', async () => {
-    const response = await post('/api/auth/cadastro', { email: 'Ana@Exemplo.com', password: SENHA });
+    const response = await post('/api/auth/cadastro', {
+      nome: '  Ana Lima  ',
+      email: 'Ana@Exemplo.com',
+      password: SENHA,
+    });
 
     assert.equal(response.status, 201);
-    assert.deepEqual(await response.json(), { user: { id: 2, email: 'ana@exemplo.com' } });
+    assert.deepEqual(await response.json(), {
+      user: { id: 2, email: 'ana@exemplo.com', nome: 'Ana Lima' },
+    });
     const setCookie = cookieFrom(response);
     assert.ok(setCookie.includes('HttpOnly'));
     assert.ok(setCookie.includes('SameSite=Strict'));
@@ -62,7 +68,11 @@ describe('autenticação: cadastro, entrada, sessão e saída', () => {
   });
 
   test('a senha nunca volta na resposta nem fica em claro no banco', async () => {
-    const response = await post('/api/auth/cadastro', { email: 'bia@exemplo.com', password: SENHA });
+    const response = await post('/api/auth/cadastro', {
+      nome: 'Bia Costa',
+      email: 'bia@exemplo.com',
+      password: SENHA,
+    });
     assert.equal((await response.text()).includes(SENHA), false);
 
     const row = ctx.repos.users.findByEmail('bia@exemplo.com');
@@ -71,13 +81,28 @@ describe('autenticação: cadastro, entrada, sessão e saída', () => {
   });
 
   test('senha curta demais é recusada com 400 e mensagem em português', async () => {
-    const response = await post('/api/auth/cadastro', { email: 'curta@exemplo.com', password: 'curta' });
+    const response = await post('/api/auth/cadastro', {
+      nome: 'Carla Souza',
+      email: 'curta@exemplo.com',
+      password: 'curta',
+    });
     assert.equal(response.status, 400);
     assert.ok((await response.json()).details.some((message) => message.includes('pelo menos 10')));
   });
 
+  test('cadastro sem nome é recusado com mensagem clara', async () => {
+    const response = await post('/api/auth/cadastro', { email: 'sem-nome@exemplo.com', password: SENHA });
+    assert.equal(response.status, 400);
+    assert.ok((await response.json()).details.includes('Informe seu nome.'));
+    assert.equal(ctx.repos.users.findByEmail('sem-nome@exemplo.com'), undefined);
+  });
+
   test('cadastro com e-mail já existente responde de forma genérica', async () => {
-    const response = await post('/api/auth/cadastro', { email: 'ana@exemplo.com', password: SENHA });
+    const response = await post('/api/auth/cadastro', {
+      nome: 'Outra Ana',
+      email: 'ana@exemplo.com',
+      password: SENHA,
+    });
     assert.equal(response.status, 409);
     assert.equal((await response.json()).error, 'Não foi possível criar a conta com estes dados.');
   });
@@ -88,7 +113,9 @@ describe('autenticação: cadastro, entrada, sessão e saída', () => {
 
     const response = await fetch(`${baseUrl}/api/auth/sessao`, { headers: { Cookie: cookie } });
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { user: { id: 2, email: 'ana@exemplo.com' } });
+    assert.deepEqual(await response.json(), {
+      user: { id: 2, email: 'ana@exemplo.com', nome: 'Ana Lima' },
+    });
   });
 
   test('senha errada e e-mail desconhecido recebem a mesma resposta', async () => {
