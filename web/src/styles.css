@@ -633,10 +633,14 @@ select {
   box-shadow: 0 20px 48px rgb(15 23 42 / 0.14);
 }
 
+/* A altura da captura acompanha a janela, para a imagem aparecer sem criar rolagem. */
 .landing__shot img {
   display: block;
   width: 100%;
   height: auto;
+  max-height: 34vh;
+  object-fit: cover;
+  object-position: top;
 }
 
 /* Em telas largas, proposta e card lado a lado. */
@@ -662,15 +666,11 @@ select {
   }
 }
 
-/* Janelas baixas: sai também o snapshot, e o título diminui, para nada passar da tela. */
+/* Janelas baixas: o título diminui, para o conteúdo caber sem rolagem. */
 @media (min-width: 960px) and (max-height: 800px) {
   .landing__title {
     font-size: 36px;
     margin-bottom: var(--space-3);
-  }
-
-  .landing__shot {
-    display: none;
   }
 }
 
