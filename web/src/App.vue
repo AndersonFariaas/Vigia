@@ -1,7 +1,9 @@
 <script setup>
 import { onMounted, onUnmounted, reactive, ref } from 'vue';
 import { api, ApiError, SESSION_EXPIRED_EVENT } from './api.js';
-import AuthPanel from './components/AuthPanel.vue';
+import LandingPage from './components/LandingPage.vue';
+import AuthDialog from './components/AuthDialog.vue';
+import { PRODUCT_NAME } from './brand.js';
 
 const FREQUENCY_OPTIONS = [
   { value: 15, label: 'A cada 15 minutos' },
@@ -52,6 +54,14 @@ const listError = ref('');
 const user = ref(null);
 const sessionChecked = ref(false);
 const sessionNotice = ref('');
+// Modal de acesso: aberto pelo menu ou pelos botões da página inicial, no modo escolhido.
+const authMode = ref('entrar');
+const authOpen = ref(false);
+
+function goToAuth(mode) {
+  authMode.value = mode;
+  authOpen.value = true;
+}
 
 const form = reactive({ url: '', label: '', intervalMinutes: DEFAULT_INTERVAL_MINUTES });
 const formError = ref('');
@@ -257,6 +267,7 @@ async function restoreSession() {
 function onAuthenticated(account) {
   user.value = account;
   sessionNotice.value = '';
+  authOpen.value = false;
   loadMonitors();
 }
 
@@ -276,6 +287,7 @@ function onSessionExpired() {
   user.value = null;
   clearAccountState();
   sessionNotice.value = 'Sua sessão expirou. Entre de novo para continuar.';
+  authOpen.value = true;
 }
 
 onMounted(() => {
@@ -291,35 +303,98 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app">
-    <header class="topbar">
+  <header class="site-header">
+    <div class="topbar">
       <h1 class="brand">
-        <span class="brand__prompt" aria-hidden="true">$</span>vigia
+        <svg class="brand__icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <path
+            d="M3 16 C8 8.5 24 8.5 29 16 C24 23.5 8 23.5 3 16 Z"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linejoin="round"
+          />
+          <circle cx="16" cy="16" r="5.2" fill="currentColor" />
+          <circle cx="16" cy="16" r="2.2" class="brand__pupil" />
+        </svg>{{ PRODUCT_NAME }}
         <span class="brand__hint">Monitor de páginas com alerta por e-mail</span>
       </h1>
 
+      <nav v-if="!user" class="nav" aria-label="Principal">
+        <a href="#recursos">Recursos</a>
+        <a href="#exemplos">Exemplos</a>
+        <a href="#como-funciona">Como funciona</a>
+      </nav>
+
       <div class="topbar__controls">
-        <p
-          class="status"
-          role="status"
-          :class="{ 'status--online': apiOnline === true, 'status--offline': apiOnline === false }"
-        >
-          <span class="status__dot" aria-hidden="true"></span>
-          {{ apiOnline === null ? 'verificando API…' : apiOnline ? 'API online' : 'API offline' }}
-        </p>
-        <template v-if="user">
+        <template v-if="!user">
+          <button class="button button--ghost button--small" type="button" @click="goToAuth('entrar')">
+            Entrar
+          </button>
+          <button class="button button--primary button--small" type="button" @click="goToAuth('cadastro')">
+            Criar conta
+          </button>
+        </template>
+        <template v-else>
+          <p
+            class="status"
+            role="status"
+            :class="{ 'status--online': apiOnline === true, 'status--offline': apiOnline === false }"
+          >
+            <span class="status__dot" aria-hidden="true"></span>
+            {{ apiOnline === null ? 'verificando API…' : apiOnline ? 'API online' : 'API offline' }}
+          </p>
           <span class="account">{{ user.nome || user.email }}</span>
           <button class="button button--ghost button--small" type="button" @click="logout">Sair</button>
         </template>
-        <button class="button button--ghost button--small" type="button" @click="toggleTheme">
-          {{ theme === 'dark' ? 'Modo claro' : 'Modo escuro' }}
+
+        <button
+          class="theme-toggle"
+          type="button"
+          :aria-label="theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'"
+          :title="theme === 'dark' ? 'Modo claro' : 'Modo escuro'"
+          @click="toggleTheme"
+        >
+          <svg
+            v-if="theme === 'dark'"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            focusable="false"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          >
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+          </svg>
+          <svg
+            v-else
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            focusable="false"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linejoin="round"
+          >
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+          </svg>
         </button>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <AuthPanel
+  <div class="app">
+    <LandingPage v-if="sessionChecked && !user" @open-auth="goToAuth" />
+
+    <AuthDialog
       v-if="sessionChecked && !user"
+      :open="authOpen"
+      :mode="authMode"
       :aviso="sessionNotice"
+      @update:mode="authMode = $event"
+      @close="authOpen = false"
       @autenticado="onAuthenticated"
     />
 
@@ -543,7 +618,7 @@ onUnmounted(() => {
       </TransitionGroup>
     </section>
 
-    <p class="card__note" style="margin-top: 32px">
+    <p v-if="user" class="card__note" style="margin-top: 32px">
       Acesso por conta com senha. Antes de expor este painel na internet, use HTTPS.
     </p>
   </div>
