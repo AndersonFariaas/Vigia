@@ -11,6 +11,12 @@ export function createUsersRepository(db) {
   );
   const findByIdStmt = db.prepare('SELECT id, email, nome FROM users WHERE id = ?');
   const setPasswordStmt = db.prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+  const findAuthByIdStmt = db.prepare(
+    'SELECT id, email, nome, password_hash FROM users WHERE id = ?',
+  );
+  const updateStmt = db.prepare(
+    'UPDATE users SET nome = ?, email = ?, password_hash = ? WHERE id = ?',
+  );
 
   return {
     create({ email, passwordHash = null, nome = null }) {
@@ -27,6 +33,15 @@ export function createUsersRepository(db) {
 
     setPassword(id, passwordHash) {
       setPasswordStmt.run(passwordHash, id);
+    },
+
+    // Usado só para conferir a senha atual ao alterar a conta.
+    findAuthById(id) {
+      return findAuthByIdStmt.get(id);
+    },
+
+    update({ id, nome, email, passwordHash }) {
+      updateStmt.run(nome, email, passwordHash, id);
     },
   };
 }

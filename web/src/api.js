@@ -46,6 +46,7 @@ export const api = {
   register: (payload) => request('/auth/cadastro', { method: 'POST', body: payload }),
   login: (payload) => request('/auth/entrar', { method: 'POST', body: payload }),
   logout: () => request('/auth/sair', { method: 'POST' }),
+  updateAccount: (payload) => request('/auth/conta', { method: 'PATCH', body: payload }),
   listMonitors: () => request('/monitors'),
   createMonitor: (payload) => request('/monitors', { method: 'POST', body: payload }),
   checkMonitor: (id) => request(`/monitors/${id}/check`, { method: 'POST' }),
