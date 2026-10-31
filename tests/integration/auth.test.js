@@ -202,4 +202,27 @@ describe('autenticação: cadastro fechado e limite de tentativas', () => {
       ctx.db.close();
     }
   });
+
+  test('exclusão de conta com senha atual errada também conta no limite', async () => {
+    const ctx = createTestContext();
+    const { token } = await ctx.auth.register({ nome: 'Dani Reis', email: 'dani@exemplo.com', password: SENHA, termosVersao: 'teste' });
+    const server = await startApp(ctx, { loginLimit: { limit: 3 } });
+    const url = `http://127.0.0.1:${server.address().port}/api/auth/conta`;
+    try {
+      const statuses = [];
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const response = await fetch(url, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json', Cookie: `vigia_sessao=${token}` },
+          body: JSON.stringify({ senhaAtual: 'errada-123' }),
+        });
+        statuses.push(response.status);
+      }
+      assert.deepEqual(statuses, [400, 400, 400, 429]);
+      assert.ok(ctx.repos.users.findByEmail('dani@exemplo.com'));
+    } finally {
+      server.close();
+      ctx.db.close();
+    }
+  });
 });
