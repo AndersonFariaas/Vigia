@@ -73,6 +73,15 @@ function onAccountUpdated(updated) {
   accountOpen.value = false;
 }
 
+// Conta excluída: volta para a página inicial, com o aviso no modal de acesso.
+function onAccountDeleted() {
+  accountOpen.value = false;
+  user.value = null;
+  clearAccountState();
+  sessionNotice.value = 'Sua conta foi excluída.';
+  authOpen.value = true;
+}
+
 const form = reactive({ url: '', label: '', intervalMinutes: DEFAULT_INTERVAL_MINUTES });
 const formError = ref('');
 const submitting = ref(false);
@@ -434,6 +443,7 @@ onUnmounted(() => {
       :user="user"
       @close="accountOpen = false"
       @updated="onAccountUpdated"
+      @deleted="onAccountDeleted"
     />
 
     <section v-if="user" class="panel" aria-labelledby="new-monitor-title">

@@ -47,6 +47,7 @@ export const api = {
   login: (payload) => request('/auth/entrar', { method: 'POST', body: payload }),
   logout: () => request('/auth/sair', { method: 'POST' }),
   updateAccount: (payload) => request('/auth/conta', { method: 'PATCH', body: payload }),
+  deleteAccount: (senhaAtual) => request('/auth/conta', { method: 'DELETE', body: { senhaAtual } }),
   listMonitors: () => request('/monitors'),
   createMonitor: (payload) => request('/monitors', { method: 'POST', body: payload }),
   checkMonitor: (id) => request(`/monitors/${id}/check`, { method: 'POST' }),

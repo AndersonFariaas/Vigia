@@ -44,11 +44,17 @@ export function createAuthService({ users, sessions, now = () => new Date() }) {
   }
 
   return {
-    async register({ nome, email, password }) {
+    async register({ nome, email, password, termosVersao }) {
       const passwordHash = await hashPassword(password);
       let userId;
       try {
-        userId = users.create({ email, passwordHash, nome });
+        userId = users.create({
+          email,
+          passwordHash,
+          nome,
+          termosVersao,
+          termosAceitosEm: now().toISOString(),
+        });
       } catch (error) {
         if (error.message?.includes('UNIQUE constraint failed')) throw new AccountExistsError();
         throw error;
@@ -105,6 +111,18 @@ export function createAuthService({ users, sessions, now = () => new Date() }) {
         throw error;
       }
       return { id: next.id, email: next.email, nome: next.nome };
+    },
+
+    /**
+     * Exclui a conta e todos os dados dela (LGPD). Exige a senha atual, para que
+     * uma sessão esquecida aberta por outra pessoa não apague nada.
+     */
+    async deleteAccount(userId, senhaAtual) {
+      const current = users.findAuthById(userId);
+      if (!(await verifyPassword(senhaAtual, current.password_hash))) {
+        throw new AccountUpdateError(400, 'Senha atual incorreta.');
+      }
+      users.delete(userId);
     },
 
     logout(token) {

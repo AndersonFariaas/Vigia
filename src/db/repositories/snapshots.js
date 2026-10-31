@@ -23,6 +23,7 @@ export function createSnapshotsRepository(db) {
     ORDER BY s.created_at DESC, s.id DESC
     LIMIT ?
   `);
+  const deleteOlderStmt = db.prepare('DELETE FROM snapshots WHERE created_at < ?');
   const pruneStmt = db.prepare(`
     DELETE FROM snapshots
     WHERE monitor_id = ?
@@ -47,6 +48,11 @@ export function createSnapshotsRepository(db) {
 
     listForUser(userId, monitorId, limit) {
       return listForUserStmt.all(monitorId, userId, limit);
+    },
+
+    // Retenção (LGPD): remove snapshots criados antes do limite. Devolve quantos foram apagados.
+    deleteOlderThan(cutoffIso) {
+      return deleteOlderStmt.run(cutoffIso).changes;
     },
 
     pruneKeeping(monitorId, keep = MAX_SNAPSHOTS_PER_MONITOR) {

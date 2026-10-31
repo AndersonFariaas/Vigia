@@ -10,7 +10,28 @@ const props = defineProps({
   open: { type: Boolean, default: false },
   user: { type: Object, required: true },
 });
-const emit = defineEmits(['close', 'updated']);
+const emit = defineEmits(['close', 'updated', 'deleted']);
+
+// Exclusão da conta: pede a senha atual e só então apaga tudo.
+const excluindo = ref(false);
+const exclusao = reactive({ senha: '', erro: '' });
+
+async function excluirConta() {
+  exclusao.erro = '';
+  if (!exclusao.senha) {
+    exclusao.erro = 'Informe a senha atual para excluir a conta.';
+    return;
+  }
+  excluindo.value = true;
+  try {
+    await api.deleteAccount(exclusao.senha);
+    emit('deleted');
+  } catch (error) {
+    exclusao.erro = messageOf(error);
+  } finally {
+    excluindo.value = false;
+  }
+}
 
 const dialog = ref(null);
 const form = reactive({ nome: '', email: '', senhaAtual: '', novaSenha: '', confirmation: '' });
@@ -23,6 +44,8 @@ const nameChanged = computed(() => form.nome.trim() !== (props.user.nome ?? ''))
 const nothingChanged = computed(() => !emailChanged.value && !passwordChanged.value && !nameChanged.value);
 
 function fillFromUser() {
+  exclusao.senha = '';
+  exclusao.erro = '';
   form.nome = props.user.nome ?? '';
   form.email = props.user.email;
   form.senhaAtual = '';
@@ -204,6 +227,31 @@ watch(
                 {{ submitting ? 'Salvando…' : 'Salvar alterações' }}
               </button>
             </form>
+
+            <div class="danger-zone">
+              <h4 class="danger-zone__title">Excluir conta</h4>
+              <p class="danger-zone__text">
+                Apaga sua conta, as páginas monitoradas, o histórico e os alertas. Essa ação não pode ser desfeita.
+              </p>
+
+              <div class="field">
+                <label class="field__label" for="account-senha-exclusao">Senha atual</label>
+                <input
+                  id="account-senha-exclusao"
+                  v-model="exclusao.senha"
+                  class="input"
+                  type="password"
+                  autocomplete="current-password"
+                  :disabled="excluindo"
+                />
+                <span v-if="exclusao.erro" class="field__error">{{ exclusao.erro }}</span>
+              </div>
+
+              <button class="button button--danger" type="button" :disabled="excluindo" @click="excluirConta">
+                <span v-if="excluindo" class="spinner" aria-hidden="true"></span>
+                {{ excluindo ? 'Excluindo…' : 'Excluir minha conta' }}
+              </button>
+            </div>
           </section>
         </div>
       </div>

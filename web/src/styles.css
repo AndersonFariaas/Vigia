@@ -1243,3 +1243,74 @@ html::-webkit-scrollbar {
       border-color 0.3s ease !important;
   }
 }
+
+/* Termos, privacidade e exclusão de conta. */
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: 14px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.check input {
+  margin-top: 4px;
+  width: 18px;
+  height: 18px;
+}
+
+.legal__meta {
+  margin-bottom: var(--space-4);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.legal__section {
+  margin-top: var(--space-5);
+}
+
+.legal__title {
+  margin-bottom: var(--space-2);
+  font-size: 16px;
+}
+
+.legal__text {
+  margin-bottom: var(--space-2);
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.danger-zone {
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px dashed var(--border);
+}
+
+.danger-zone__title {
+  margin-bottom: var(--space-2);
+  font-size: 16px;
+  color: var(--danger);
+}
+
+.danger-zone__text {
+  margin-bottom: var(--space-4);
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.landing-footer__link {
+  min-height: var(--touch-target);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.landing-footer__link:hover {
+  color: var(--text);
+}

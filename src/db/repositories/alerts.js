@@ -53,6 +53,7 @@ export function createAlertsRepository(db) {
     UPDATE alerts SET send_status = ?, sent_at = ? WHERE id = ?
   `);
   const markFailedStmt = db.prepare('UPDATE alerts SET send_status = ? WHERE id = ?');
+  const deleteOlderStmt = db.prepare('DELETE FROM alerts WHERE created_at < ?');
 
   return {
     insert({ monitorId, kind, severity, details }) {
@@ -79,6 +80,11 @@ export function createAlertsRepository(db) {
 
     markFailed(id) {
       markFailedStmt.run(SEND_STATUS.FALHOU, id);
+    },
+
+    // Retenção (LGPD): remove alertas antes do limite. A análise da Devin cai junto (cascata).
+    deleteOlderThan(cutoffIso) {
+      return deleteOlderStmt.run(cutoffIso).changes;
     },
   };
 }
