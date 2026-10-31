@@ -556,12 +556,20 @@ select {
 }
 
 /* Página inicial: menu, hero, seções de conteúdo e rodapé. */
-.app .topbar {
+/* Cabeçalho de largura total: fundo e linha cobrem a tela inteira ao rolar. */
+.site-header {
   position: sticky;
   top: 0;
   z-index: 40;
-  padding-top: var(--space-4);
   background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.site-header .topbar {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--space-4);
+  border-bottom: 0;
 }
 
 .nav {
@@ -832,12 +840,75 @@ select {
   }
 }
 
-.section--access {
-  scroll-margin-top: 96px;
+/* Modal de acesso: o card de entrar e criar conta aparece sobre a página. */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgb(15 23 42 / 0.6);
 }
 
-.section--access .auth-card {
+.dialog {
+  position: relative;
+  width: 100%;
   max-width: 560px;
+  max-height: calc(100dvh - 2 * var(--space-4));
+  overflow-y: auto;
+  border-radius: var(--radius);
+}
+
+.dialog .auth-card {
+  max-width: none;
+  box-shadow: 0 24px 64px rgb(15 23 42 / 0.35);
+}
+
+.dialog__close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 1;
+  display: inline-grid;
+  place-items: center;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dialog__close:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dialog-enter-active,
+  .dialog-leave-active {
+    transition: opacity 0.25s ease;
+  }
+
+  .dialog-enter-active .dialog,
+  .dialog-leave-active .dialog {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+
+  .dialog-enter-from,
+  .dialog-leave-to {
+    opacity: 0;
+  }
+
+  .dialog-enter-from .dialog,
+  .dialog-leave-to .dialog {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
 }
 
 .landing-footer {

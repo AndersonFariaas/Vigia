@@ -1,18 +1,7 @@
 <script setup>
 import { PRODUCT_NAME } from '../brand.js';
-import AuthPanel from './AuthPanel.vue';
 
-defineProps({
-  authMode: { type: String, default: 'entrar' },
-  aviso: { type: String, default: '' },
-});
-const emit = defineEmits(['update:authMode', 'autenticado']);
-
-// Leva para o card de acesso já no formulário certo.
-function choose(mode) {
-  emit('update:authMode', mode);
-  document.getElementById('acesso')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
+const emit = defineEmits(['open-auth']);
 </script>
 
 <template>
@@ -29,10 +18,10 @@ function choose(mode) {
         </p>
 
         <div class="hero__actions">
-          <button class="button button--primary" type="button" @click="choose('cadastro')">
+          <button class="button button--primary" type="button" @click="emit('open-auth', 'cadastro')">
             Criar conta grátis
           </button>
-          <button class="button button--ghost" type="button" @click="choose('entrar')">
+          <button class="button button--ghost" type="button" @click="emit('open-auth', 'entrar')">
             Já tenho conta
           </button>
         </div>
@@ -145,17 +134,6 @@ function choose(mode) {
       </div>
     </section>
 
-    <section id="acesso" class="section section--access">
-      <p class="eyebrow">Acesso</p>
-      <h2 class="section__title">Comece agora</h2>
-      <AuthPanel
-        :mode="authMode"
-        :aviso="aviso"
-        @update:mode="emit('update:authMode', $event)"
-        @autenticado="emit('autenticado', $event)"
-      />
-    </section>
-
     <footer class="landing-footer">
       <p>
         <strong>{{ PRODUCT_NAME }}</strong> · Acesso por conta com senha. Antes de expor este painel na internet, use HTTPS.
@@ -164,7 +142,6 @@ function choose(mode) {
         <a href="#recursos">Recursos</a>
         <a href="#como-funciona">Como funciona</a>
         <a href="#exemplos">Exemplos</a>
-        <a href="#acesso">Acesso</a>
       </nav>
     </footer>
   </div>

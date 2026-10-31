@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, reactive, ref } from 'vue';
 import { api, ApiError, SESSION_EXPIRED_EVENT } from './api.js';
 import LandingPage from './components/LandingPage.vue';
+import AuthDialog from './components/AuthDialog.vue';
 import { PRODUCT_NAME } from './brand.js';
 
 const FREQUENCY_OPTIONS = [
@@ -53,12 +54,13 @@ const listError = ref('');
 const user = ref(null);
 const sessionChecked = ref(false);
 const sessionNotice = ref('');
-// Modo do card de acesso (entrar ou criar conta), escolhido pelo menu ou pelos botões da página inicial.
+// Modal de acesso: aberto pelo menu ou pelos botões da página inicial, no modo escolhido.
 const authMode = ref('entrar');
+const authOpen = ref(false);
 
 function goToAuth(mode) {
   authMode.value = mode;
-  document.getElementById('acesso')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  authOpen.value = true;
 }
 
 const form = reactive({ url: '', label: '', intervalMinutes: DEFAULT_INTERVAL_MINUTES });
@@ -265,6 +267,7 @@ async function restoreSession() {
 function onAuthenticated(account) {
   user.value = account;
   sessionNotice.value = '';
+  authOpen.value = false;
   loadMonitors();
 }
 
@@ -284,6 +287,7 @@ function onSessionExpired() {
   user.value = null;
   clearAccountState();
   sessionNotice.value = 'Sua sessão expirou. Entre de novo para continuar.';
+  authOpen.value = true;
 }
 
 onMounted(() => {
@@ -299,8 +303,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app">
-    <header class="topbar">
+  <header class="site-header">
+    <div class="topbar">
       <h1 class="brand">
         <svg class="brand__icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
           <path
@@ -378,13 +382,19 @@ onUnmounted(() => {
           </svg>
         </button>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <LandingPage
+  <div class="app">
+    <LandingPage v-if="sessionChecked && !user" @open-auth="goToAuth" />
+
+    <AuthDialog
       v-if="sessionChecked && !user"
-      :auth-mode="authMode"
+      :open="authOpen"
+      :mode="authMode"
       :aviso="sessionNotice"
-      @update:auth-mode="authMode = $event"
+      @update:mode="authMode = $event"
+      @close="authOpen = false"
       @autenticado="onAuthenticated"
     />
 
