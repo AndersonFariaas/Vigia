@@ -115,7 +115,7 @@ select {
 }
 
 .app {
-  max-width: 880px;
+  max-width: 1120px;
   margin: 0 auto;
   padding: var(--space-6) var(--space-4) 64px;
 }
@@ -555,125 +555,310 @@ select {
   }
 }
 
-/* Tela de entrada: card com os botões e modal com o formulário. */
-:root {
-  --overlay: rgb(15 23 42 / 0.6);
+/* Página inicial: menu, hero, seções de conteúdo e rodapé. */
+.app .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  padding-top: var(--space-4);
+  background: var(--bg);
 }
 
-/*
- * Tela sem login: ocupa a altura da janela e centraliza a proposta e o card nela,
- * para não haver rolagem em telas de computador.
- */
-.app--auth {
+.nav {
   display: flex;
-  flex-direction: column;
-  max-width: 1120px;
-  min-height: 100dvh;
-}
-
-.app--auth .landing {
-  flex: 1;
-  align-content: center;
-  margin-top: 0;
-  padding: var(--space-6) 0;
-}
-
-.landing {
-  display: grid;
   gap: var(--space-6);
-  margin-top: var(--space-6);
+}
+
+.nav a,
+.landing-footer__links a {
+  display: inline-flex;
   align-items: center;
-}
-
-.landing__title {
-  margin-bottom: var(--space-4);
-  font-size: clamp(28px, 4vw, 40px);
-  line-height: 1.12;
-  letter-spacing: -0.02em;
-}
-
-.landing__lead {
-  max-width: 56ch;
-  font-size: 17px;
+  min-height: var(--touch-target);
   color: var(--muted);
-}
-
-.landing__features {
-  display: grid;
-  gap: var(--space-2);
-  margin: var(--space-4) 0 var(--space-6);
-  padding: 0;
-  list-style: none;
+  font-weight: 600;
   font-size: 15px;
+  text-decoration: none;
 }
 
-.landing__features li {
-  position: relative;
-  padding-left: var(--space-4);
+.nav a:hover,
+.landing-footer__links a:hover {
+  color: var(--text);
 }
 
-.landing__features li::before {
-  content: '';
-  position: absolute;
-  top: 0.6em;
-  left: 0;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-
-/* Captura do painel com dados fictícios. Aparece só em telas largas e altas. */
-.landing__shot {
-  display: none;
-  margin: 32px 0 0;
-  overflow: hidden;
+.theme-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: var(--touch-target);
+  height: var(--touch-target);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 20px 48px rgb(15 23 42 / 0.14);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
 }
 
-/* A altura da captura acompanha a janela, para a imagem aparecer sem criar rolagem. */
-.landing__shot img {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 34vh;
-  object-fit: cover;
-  object-position: top;
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
 }
 
-/* Em telas largas, proposta e card lado a lado. */
-@media (min-width: 960px) {
-  .landing {
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-    gap: 72px;
-  }
-
-  .landing__title {
-    font-size: clamp(36px, 3.4vw, 48px);
-  }
-
-  .landing__shot {
-    display: block;
-  }
-}
-
-/* Janelas de altura média: sai a lista de pontos, para o snapshot caber sem rolagem. */
-@media (min-width: 960px) and (max-height: 960px) {
-  .landing__features {
+@media (max-width: 879px) {
+  .nav {
     display: none;
   }
 }
 
-/* Janelas baixas: o título diminui, para o conteúdo caber sem rolagem. */
-@media (min-width: 960px) and (max-height: 800px) {
-  .landing__title {
-    font-size: 36px;
-    margin-bottom: var(--space-3);
+.pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin-bottom: var(--space-6);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.hero {
+  display: grid;
+  gap: 48px;
+  align-items: center;
+  padding: 48px 0 64px;
+}
+
+.hero__title {
+  margin-bottom: var(--space-5);
+  font-size: clamp(38px, 4.2vw, 54px);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+}
+
+.hero__highlight {
+  color: var(--accent);
+}
+
+.hero__lead {
+  max-width: 52ch;
+  font-size: 18px;
+  color: var(--muted);
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-8, 32px) 0 var(--space-6);
+}
+
+.hero__actions .button {
+  min-height: 52px;
+  padding: 0 var(--space-6);
+  font-size: 16px;
+}
+
+.hero__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.hero__checks li::before {
+  content: '✓';
+  margin-right: var(--space-2);
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.hero__visual {
+  position: relative;
+}
+
+.frame {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 24px 64px rgb(15 23 42 / 0.18);
+}
+
+.frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.chip {
+  position: absolute;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 12px 28px rgb(15 23 42 / 0.2);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chip--alert {
+  left: -16px;
+  bottom: 32px;
+}
+
+.chip--risk {
+  top: 40px;
+  right: -16px;
+  color: var(--danger);
+}
+
+@media (min-width: 960px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 64px;
+    padding: 72px 0 96px;
   }
 }
 
+@media (max-width: 639px) {
+  .chip {
+    display: none;
+  }
+}
+
+.section {
+  padding: 72px 0;
+  border-top: 1px solid var(--border);
+  scroll-margin-top: 96px;
+}
+
+.section__title {
+  max-width: 24ch;
+  margin: var(--space-2) 0 var(--space-4);
+  font-size: clamp(30px, 3.4vw, 42px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.section__lead {
+  max-width: 60ch;
+  margin-bottom: var(--space-8, 32px);
+  font-size: 17px;
+  color: var(--muted);
+}
+
+.features,
+.steps {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feature,
+.step {
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.feature__title,
+.step__title {
+  margin-bottom: var(--space-2);
+  font-size: 18px;
+}
+
+.feature__text,
+.step__text {
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.step__number {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: var(--space-4);
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.example {
+  display: grid;
+  gap: var(--space-6);
+  align-items: center;
+  margin-top: var(--space-8, 32px);
+}
+
+.example__title {
+  margin-bottom: var(--space-3);
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+.example__text {
+  font-size: 17px;
+  color: var(--muted);
+}
+
+@media (min-width: 760px) {
+  .features,
+  .steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 960px) {
+  .example {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    gap: 56px;
+  }
+
+  .example--reverse .example__text {
+    order: 2;
+  }
+}
+
+.section--access {
+  scroll-margin-top: 96px;
+}
+
+.section--access .auth-card {
+  max-width: 560px;
+}
+
+.landing-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-8, 32px) 0 var(--space-6);
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.landing-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+/* Card de acesso: o formulário fica dentro dele. */
 .auth-card {
   padding: 48px;
   background: var(--surface);
@@ -682,102 +867,59 @@ select {
 }
 
 .auth-card__title {
-  font-size: 36px;
+  margin-bottom: var(--space-2);
+  font-size: 32px;
   line-height: 1.15;
-  margin-bottom: var(--space-3);
 }
 
 .auth-card__text {
+  margin-bottom: var(--space-6);
   font-size: 17px;
   color: var(--muted);
 }
 
-.auth-card__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  margin-top: var(--space-8, 32px);
-}
-
-.auth-card__actions .button {
-  flex: 1 1 160px;
-  min-height: 60px;
-  font-size: 17px;
-}
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
+.auth-tabs {
   display: grid;
-  place-items: center;
-  padding: var(--space-4);
-  background: var(--overlay);
-}
-
-.modal {
-  width: 100%;
-  max-width: 440px;
-  max-height: calc(100dvh - 2 * var(--space-4));
-  overflow-y: auto;
-  padding: var(--space-6);
-  background: var(--surface);
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-bottom: var(--space-6);
+  padding: 4px;
+  background: var(--surface-muted);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 24px 48px rgb(15 23 42 / 0.25);
 }
 
-.modal__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-}
-
-.modal__title {
-  font-size: 20px;
-}
-
-.modal__close {
-  flex: 0 0 var(--touch-target);
-  width: var(--touch-target);
-  height: var(--touch-target);
+.auth-tabs__tab {
+  min-height: 44px;
   border: 0;
-  border-radius: var(--radius);
+  border-radius: calc(var(--radius) - 2px);
   background: transparent;
   color: var(--muted);
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.modal__close:hover {
-  background: var(--surface-muted);
-  color: var(--text);
-}
-
-.modal__submit {
-  width: 100%;
-  margin-top: var(--space-2);
-}
-
-.modal__switch {
-  margin-top: var(--space-4);
-  text-align: center;
-  font-size: 14px;
-  color: var(--muted);
-}
-
-.link-button {
-  min-height: var(--touch-target);
-  padding: 0 var(--space-1);
-  border: 0;
-  background: none;
-  color: var(--link);
   font-weight: 600;
-  text-decoration: underline;
   cursor: pointer;
+}
+
+.auth-tabs__tab[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.12);
+}
+
+.auth-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.auth-form__pair {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.auth-form .button {
+  width: 100%;
+  min-height: 52px;
+  margin-top: var(--space-2);
+  font-size: 16px;
 }
 
 .field__error {
@@ -787,11 +929,6 @@ select {
 
 .input[aria-invalid='true'] {
   border-color: var(--danger);
-}
-
-/* No modal, os campos sempre empilham, mesmo em telas largas. */
-.modal .form {
-  grid-template-columns: 1fr;
 }
 
 .input-group {
@@ -819,53 +956,19 @@ select {
   cursor: pointer;
 }
 
+@media (min-width: 640px) {
+  .auth-form__pair:not(.auth-form__pair--single) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 @media (max-width: 639px) {
   .auth-card {
     padding: var(--space-4);
   }
 
-  /* No celular, a lista de pontos sai para a tela caber sem rolagem. O texto acima já explica o produto. */
-  .landing__features {
-    display: none;
-  }
-
-  .app--auth .landing {
-    padding: var(--space-4) 0;
-  }
-
-  .modal-overlay {
-    place-items: end center;
-    padding: 0;
-  }
-
-  .modal {
-    max-width: none;
-    max-height: 92dvh;
-    padding: var(--space-6) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom));
-    border-radius: 16px 16px 0 0;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  @keyframes overlay-in {
-    from {
-      opacity: 0;
-    }
-  }
-
-  @keyframes modal-in {
-    from {
-      opacity: 0;
-      transform: translateY(12px) scale(0.98);
-    }
-  }
-
-  .modal-overlay {
-    animation: overlay-in 0.2s ease both;
-  }
-
-  .modal {
-    animation: modal-in 0.25s ease both;
+  .auth-card__title {
+    font-size: 28px;
   }
 }
 

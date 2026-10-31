@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, onUnmounted, reactive, ref } from 'vue';
 import { api, ApiError, SESSION_EXPIRED_EVENT } from './api.js';
-import AuthPanel from './components/AuthPanel.vue';
+import LandingPage from './components/LandingPage.vue';
 import { PRODUCT_NAME } from './brand.js';
 
 const FREQUENCY_OPTIONS = [
@@ -53,6 +53,13 @@ const listError = ref('');
 const user = ref(null);
 const sessionChecked = ref(false);
 const sessionNotice = ref('');
+// Modo do card de acesso (entrar ou criar conta), escolhido pelo menu ou pelos botões da página inicial.
+const authMode = ref('entrar');
+
+function goToAuth(mode) {
+  authMode.value = mode;
+  document.getElementById('acesso')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 const form = reactive({ url: '', label: '', intervalMinutes: DEFAULT_INTERVAL_MINUTES });
 const formError = ref('');
@@ -292,7 +299,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div :class="['app', { 'app--auth': !user }]">
+  <div class="app">
     <header class="topbar">
       <h1 class="brand">
         <svg class="brand__icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
@@ -309,28 +316,75 @@ onUnmounted(() => {
         <span class="brand__hint">Monitor de páginas com alerta por e-mail</span>
       </h1>
 
+      <nav v-if="!user" class="nav" aria-label="Principal">
+        <a href="#recursos">Recursos</a>
+        <a href="#exemplos">Exemplos</a>
+        <a href="#como-funciona">Como funciona</a>
+      </nav>
+
       <div class="topbar__controls">
-        <p
-          class="status"
-          role="status"
-          :class="{ 'status--online': apiOnline === true, 'status--offline': apiOnline === false }"
-        >
-          <span class="status__dot" aria-hidden="true"></span>
-          {{ apiOnline === null ? 'verificando API…' : apiOnline ? 'API online' : 'API offline' }}
-        </p>
-        <template v-if="user">
+        <template v-if="!user">
+          <button class="button button--ghost button--small" type="button" @click="goToAuth('entrar')">
+            Entrar
+          </button>
+          <button class="button button--primary button--small" type="button" @click="goToAuth('cadastro')">
+            Criar conta
+          </button>
+        </template>
+        <template v-else>
+          <p
+            class="status"
+            role="status"
+            :class="{ 'status--online': apiOnline === true, 'status--offline': apiOnline === false }"
+          >
+            <span class="status__dot" aria-hidden="true"></span>
+            {{ apiOnline === null ? 'verificando API…' : apiOnline ? 'API online' : 'API offline' }}
+          </p>
           <span class="account">{{ user.nome || user.email }}</span>
           <button class="button button--ghost button--small" type="button" @click="logout">Sair</button>
         </template>
-        <button class="button button--ghost button--small" type="button" @click="toggleTheme">
-          {{ theme === 'dark' ? 'Modo claro' : 'Modo escuro' }}
+
+        <button
+          class="theme-toggle"
+          type="button"
+          :aria-label="theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'"
+          :title="theme === 'dark' ? 'Modo claro' : 'Modo escuro'"
+          @click="toggleTheme"
+        >
+          <svg
+            v-if="theme === 'dark'"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            focusable="false"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          >
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+          </svg>
+          <svg
+            v-else
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            focusable="false"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linejoin="round"
+          >
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+          </svg>
         </button>
       </div>
     </header>
 
-    <AuthPanel
+    <LandingPage
       v-if="sessionChecked && !user"
+      :auth-mode="authMode"
       :aviso="sessionNotice"
+      @update:auth-mode="authMode = $event"
       @autenticado="onAuthenticated"
     />
 
