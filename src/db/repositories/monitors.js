@@ -11,15 +11,14 @@ export class DuplicateMonitorError extends Error {
 const UNIQUE_VIOLATION = 'UNIQUE constraint failed';
 
 /**
- * Acesso a monitores. Toda consulta vinda de usuário recebe `userId` e filtra por ele.
- * `findByIdUnscoped` é só para o agendador: não pode ser usada em rotas.
+ * Acesso a monitores. Toda consulta recebe `userId` e filtra por ele. Só o agendador
+ * lista monitores de todos os usuários, pelo `findDue`.
  */
 export function createMonitorsRepository(db) {
   const insertStmt = db.prepare(`
     INSERT INTO monitors (user_id, url, label, interval_minutes)
     VALUES (?, ?, ?, ?)
   `);
-  const findByIdStmt = db.prepare('SELECT * FROM monitors WHERE id = ?');
   const findForUserStmt = db.prepare('SELECT * FROM monitors WHERE id = ? AND user_id = ?');
   const listForUserStmt = db.prepare(
     'SELECT * FROM monitors WHERE user_id = ? ORDER BY created_at DESC, id DESC',
@@ -60,10 +59,6 @@ export function createMonitorsRepository(db) {
 
     findByIdForUser(userId, id) {
       return findForUserStmt.get(id, userId);
-    },
-
-    findByIdUnscoped(id) {
-      return findByIdStmt.get(id);
     },
 
     findDue(nowIso, limit) {

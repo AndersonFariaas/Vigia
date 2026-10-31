@@ -52,7 +52,7 @@ describe('checagem: comparação com o snapshot anterior', () => {
     assert.equal(result.status, 'referencia');
     assert.equal(count('snapshots'), 1);
     assert.equal(count('alerts'), 0);
-    assert.equal(repos.monitors.findByIdUnscoped(monitor.id).last_status, 'referencia');
+    assert.equal(repos.monitors.findByIdForUser(monitor.user_id, monitor.id).last_status, 'referencia');
   });
 
   test('conteúdo igual registra "ok" e não alerta', async () => {
@@ -125,7 +125,7 @@ describe('checagem: segurança e erros', () => {
 
     assert.equal(result.status, 'erro');
     assert.equal(scrape.calls(), 0);
-    const stored = repos.monitors.findByIdUnscoped(monitor.id);
+    const stored = repos.monitors.findByIdForUser(monitor.user_id, monitor.id);
     assert.equal(stored.last_status, 'erro');
     assert.match(stored.last_error, /rede privada/);
   });
@@ -170,7 +170,7 @@ describe('checagem: segurança e erros', () => {
 
     assert.equal(calls, 1);
     assert.equal(result.status, 'erro');
-    assert.match(repos.monitors.findByIdUnscoped(monitor.id).last_error, /créditos/);
+    assert.match(repos.monitors.findByIdForUser(monitor.user_id, monitor.id).last_error, /créditos/);
   });
 
   test('erro inesperado grava mensagem genérica, nunca a mensagem crua', async () => {
@@ -180,7 +180,7 @@ describe('checagem: segurança e erros', () => {
 
     await checkMonitor(monitor);
 
-    const stored = repos.monitors.findByIdUnscoped(monitor.id).last_error;
+    const stored = repos.monitors.findByIdForUser(monitor.user_id, monitor.id).last_error;
     assert.equal(stored, 'Erro inesperado ao verificar a página.');
   });
 
@@ -190,7 +190,7 @@ describe('checagem: segurança e erros', () => {
     const result = await checkMonitor(monitor);
 
     assert.equal(result.status, 'erro');
-    assert.match(repos.monitors.findByIdUnscoped(monitor.id).last_error, /conteúdo legível/);
+    assert.match(repos.monitors.findByIdForUser(monitor.user_id, monitor.id).last_error, /conteúdo legível/);
   });
 
   test('segunda checagem simultânea do mesmo monitor é recusada', async () => {
@@ -215,10 +215,10 @@ describe('checagem: segurança e erros', () => {
     });
 
     await checkMonitor(monitor);
-    assert.notEqual(repos.monitors.findByIdUnscoped(monitor.id).last_error, null);
+    assert.notEqual(repos.monitors.findByIdForUser(monitor.user_id, monitor.id).last_error, null);
 
     await checkMonitor(monitor);
-    const stored = repos.monitors.findByIdUnscoped(monitor.id);
+    const stored = repos.monitors.findByIdForUser(monitor.user_id, monitor.id);
     assert.equal(stored.last_error, null);
     assert.notEqual(stored.last_checked_at, null);
   });
