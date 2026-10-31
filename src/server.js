@@ -20,17 +20,14 @@ import { createResendClient } from './services/notifier/resendClient.js';
 import { createDevinClient } from './services/analyst/devinClient.js';
 import { createRoundRunner, startScheduler } from './services/scheduler/jobs.js';
 import { createRetention } from './services/retention.js';
+import { createLogger } from './logger.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost']);
 const WEB_DIST = join(dirname(fileURLToPath(import.meta.url)), '..', 'web', 'dist');
 
-function log(level, message) {
-  const line = `[vigia] ${level.toUpperCase()} ${message}`;
-  if (level === 'error') console.error(line);
-  else console.log(line);
-}
+const log = createLogger();
 
 async function main() {
   // Carrega o .env do diretório atual, se existir. Variáveis já definidas no ambiente vencem.
@@ -111,6 +108,7 @@ async function main() {
     assertPublicUrl,
     analyst,
     secureCookies: isProduction,
+    trustProxy: config.TRUST_PROXY,
     registrationOpen: config.CADASTRO_ABERTO,
     staticDir,
     log,

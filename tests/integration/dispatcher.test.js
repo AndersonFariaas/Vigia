@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDispatcher } from '../../src/services/notifier/dispatcher.js';
+import { createDispatcher, MAX_SEND_ATTEMPTS } from '../../src/services/notifier/dispatcher.js';
 import { createRoundRunner } from '../../src/services/scheduler/jobs.js';
 import { createTestContext } from './helpers.js';
 
@@ -62,10 +62,11 @@ describe('dispatcher: envio de alertas pendentes', () => {
       .prepare('SELECT send_status FROM alerts ORDER BY id')
       .all()
       .map((row) => row.send_status);
-    assert.deepEqual(statuses, ['enviado', 'falhou', 'enviado']);
+    // O item com falha volta à fila: só fica 'falhou' depois de esgotar as tentativas.
+    assert.deepEqual(statuses, ['enviado', 'pendente', 'enviado']);
   });
 
-  test('alerta com falha não é reenviado na próxima rodada', async () => {
+  test('alerta com falha volta à fila e para de tentar depois do limite', async () => {
     const ctx = createTestContext();
     seedAlerts(ctx, 1);
     const dispatch = createDispatcher({
@@ -75,10 +76,34 @@ describe('dispatcher: envio de alertas pendentes', () => {
       },
     });
 
+    const failures = [];
+    for (let round = 0; round <= MAX_SEND_ATTEMPTS; round += 1) {
+      failures.push((await dispatch()).failed);
+    }
+
+    assert.deepEqual(failures, [1, 1, 1, 0]);
+    const row = ctx.db.prepare('SELECT send_status, send_attempts FROM alerts').get();
+    assert.equal(row.send_status, 'falhou');
+    assert.equal(row.send_attempts, MAX_SEND_ATTEMPTS);
+  });
+
+  test('falha seguida de sucesso marca o alerta como enviado', async () => {
+    const ctx = createTestContext();
+    seedAlerts(ctx, 1);
+    let call = 0;
+    const dispatch = createDispatcher({
+      alerts: ctx.repos.alerts,
+      sendEmail: async () => {
+        call += 1;
+        if (call === 1) throw new Error('instável');
+      },
+    });
+
     await dispatch();
     const second = await dispatch();
 
-    assert.deepEqual(second, { sent: 0, failed: 0 });
+    assert.deepEqual(second, { sent: 1, failed: 0 });
+    assert.equal(ctx.db.prepare('SELECT send_status FROM alerts').get().send_status, 'enviado');
   });
 });
 

@@ -4,7 +4,7 @@ Monitor de páginas públicas. Quando o conteúdo muda, o Vigia cria um alerta e
 
 Projeto da **Hack Brasil 2026**. Este README explica não só como rodar, mas **por que** cada decisão foi tomada, para servir de material de estudo.
 
-> **Status:** Fase 3 (contas com senha e múltiplos usuários) e a parte de LGPD da Fase 4 (termos, retenção de 90 dias e exclusão de conta) implementadas. Planos, cobrança e a Fase 5 estão descritos no fim.
+> **Status:** Fases 3 e 5 implementadas, e a parte de LGPD da Fase 4 (termos, retenção de 90 dias e exclusão de conta). Ficam pendentes os planos com cobrança (Fase 4) e a publicação do deploy, que depende de escolher o serviço de hospedagem.
 
 ---
 
@@ -332,14 +332,43 @@ Observações:
 
 ---
 
+## Operação (Fase 5)
+
+**Logs.** Cada evento sai como uma linha JSON, com horário, nível e mensagem. A API também registra cada requisição (método, caminho, status e duração), sem a query string nem o corpo:
+
+```json
+{"time":"2026-10-31T12:00:00.000Z","level":"info","msg":"requisicao","method":"GET","path":"/api/monitors","status":200,"durationMs":4}
+```
+
+Erros vão para a saída de erro (stderr). Para ver só eles: `node src/server.js 2>&1 | grep '"level":"error"'`.
+
+**Cópia do banco.** `npm run backup` grava uma cópia consistente em `BACKUP_DIR` (padrão `./backups`) e mantém as `BACKUP_KEEP` mais recentes (padrão 7). Não copie o `.db` na mão: com o modo WAL, a cópia pode sair incompleta. Para agendar, use cron ou o Agendador de Tarefas do Windows.
+
+Para restaurar: pare o servidor, copie a cópia desejada por cima de `DATABASE_PATH`, apague `vigia.db-wal` e `vigia.db-shm` se existirem e suba o servidor de novo.
+
+**Reenvio de alertas.** Uma falha no envio volta o alerta para a fila. Ele é tentado até 3 vezes (`MAX_SEND_ATTEMPTS`, em `dispatcher.js`). Depois disso fica como `falhou`, e reenviar exige intervenção manual.
+
+**Limite de requisições.** Além do limite de login, cadastro e trocas de senha, toda a API tem um teto de 600 requisições a cada 15 minutos por IP. Atrás de um proxy HTTPS, defina `TRUST_PROXY=true`: sem isso, todos os usuários compartilham o IP do proxy e o limite trava para todos.
+
+**Teste de carga.** `npm run carga -- --url http://127.0.0.1:3000/api/health --total 500 --concurrency 20` mostra latências p50, p95, p99 e a vazão. Use só contra um servidor seu, de preferência um ambiente de teste.
+
+**Deploy (preparado, ainda não publicado).** Antes de publicar:
+1. Node 22.13 ou mais novo, porque o banco usa `node:sqlite`.
+2. `npm ci`, `npm run web:build` e `npm run migrate`.
+3. `NODE_ENV=production` e chaves reais no `.env`, que nunca vai para o Git.
+4. HTTPS na frente (Caddy ou Nginx), com `HOST=127.0.0.1` e `TRUST_PROXY=true`.
+5. Disco persistente para `data/` e `backups/`. O SQLite não funciona bem em hospedagem sem disco (serverless).
+6. Backup agendado com `npm run backup`.
+7. Processo supervisionado, que reinicia sozinho (systemd, pm2 ou Docker).
+
 ## Limitações conhecidas
 
 - **DNS rebinding:** o guard de SSRF valida o domínio **antes** da requisição. A Firecrawl conecta na infraestrutura dela, então o risco é reduzido, não eliminado. Fica para a Fase 2.
 - **Sem HTTPS dentro do Vigia:** o servidor não faz TLS. Para expor na internet, coloque um proxy com HTTPS na frente.
 - **E-mail não verificado:** qualquer pessoa pode cadastrar um endereço e receber alertas dele. A verificação por link fica para a Fase 4.
 - **Sem recuperação de senha:** quem esquecer a senha precisa de alguém com acesso ao servidor para rodar `npm run usuario`.
-- **Rate limit só no login e no cadastro:** o restante da API não tem limite de requisições. Falta isso antes de expor publicamente.
-- **Falha de envio não é reenviada automaticamente:** o alerta fica marcado como `falhou`. Um reenvio manual ou uma fila de retentativa é trabalho da Fase 5.
+- **Limite por IP:** sem `TRUST_PROXY=true` atrás de um proxy, o limite vale para o IP do proxy e trava todos os usuários juntos.
+- **Falha de envio esgotada:** depois de 3 tentativas, o alerta fica como `falhou` e não é mais enviado sozinho.
 - **Mudança de conteúdo com severidade fixa "média":** só os riscos da Fase 2 têm severidade própria.
 - **Detectores só veem o HTML do servidor:** formulário ou script criado por JavaScript no navegador não aparece na leitura.
 - **Lista de marcas curta:** `referenceDomains.js` cobre algumas marcas. Um domínio fora da lista não é comparado.
@@ -356,4 +385,4 @@ Observações:
 - **Fase 2 (implementada):** detectores de risco em `src/services/detectors/` (formulário de senha enviando para outro site, campo de senha novo ou com destino alterado, novos scripts de outros domínios, certificado SSL perto do vencimento ou vencido, domínio parecido com marca conhecida), com severidade por risco. Fixtures de golpe e páginas normais em `tests/fixtures/`. Nos fixtures: 0 falsos positivos e 3 de 3 golpes detectados.
 - **Fase 3 (implementada):** contas com senha (scrypt), sessão em cookie `HttpOnly`, rate limit por IP no login, no cadastro e nas trocas de senha (só as respostas de erro contam), cada conta isolada das outras e alertas no e-mail do dono.
 - **Fase 4 (parcial):** termos de uso com aceite no cadastro, retenção de 90 dias e exclusão de conta (LGPD) implementados. Pendentes: planos com limites e cobrança (Mercado Pago ou Stripe).
-- **Fase 5:** logs estruturados, backup, deploy e teste de carga.
+- **Fase 5 (implementada):** logs estruturados em JSON com registro de requisições, cópia do banco com rotação (`npm run backup`), reenvio de alertas com falha (até 3 tentativas), limite geral da API com `TRUST_PROXY` e teste de carga (`npm run carga`). O deploy está preparado na seção Operação, mas ainda não foi publicado.

@@ -1,4 +1,6 @@
 const DEFAULT_BATCH_SIZE = 20;
+// Tentativas de envio por alerta. Depois disso ele fica 'falhou' e não é mais tentado.
+export const MAX_SEND_ATTEMPTS = 3;
 
 const HTML_ESCAPES = {
   '&': '&amp;',
@@ -109,7 +111,7 @@ export function renderAlertEmail(alert) {
 
 /**
  * Envia os alertas pendentes em lote. Falha em um item é registrada e não
- * interrompe os demais. Alertas com falha não são reenviados automaticamente.
+ * interrompe os demais. Um alerta com falha volta à fila, até MAX_SEND_ATTEMPTS.
  */
 export function createDispatcher({
   alerts,
@@ -129,7 +131,7 @@ export function createDispatcher({
         alerts.markSent(alert.id, now().toISOString());
         sent += 1;
       } catch (error) {
-        alerts.markFailed(alert.id);
+        alerts.markFailed(alert.id, MAX_SEND_ATTEMPTS);
         failed += 1;
         log('error', `Falha ao enviar o alerta ${alert.id}: ${error.code ?? error.name}`);
       }

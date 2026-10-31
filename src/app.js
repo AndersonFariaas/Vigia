@@ -2,10 +2,45 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import express from 'express';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { createMonitorsRouter } from './routes/monitors.routes.js';
 import { createAuthRouter, requireAuth } from './routes/auth.routes.js';
 
 const JSON_BODY_LIMIT = '10kb';
+// Teto geral da API por IP. Uma ação do painel faz poucas chamadas, então o limite é folgado.
+const API_WINDOW_MS = 15 * 60 * 1000;
+const API_REQUESTS_PER_WINDOW = 600;
+
+// Uma linha por requisição da API: método, caminho, status e duração. Sem query, cabeçalhos ou corpo.
+function requestLogger(log) {
+  return (req, res, next) => {
+    // O caminho é guardado agora: rotas montadas (app.use('/api/x')) mudam req.path no meio do caminho.
+    const { method, path } = req;
+    if (!path.startsWith('/api')) return next();
+    const started = process.hrtime.bigint();
+    res.on('finish', () => {
+      const durationMs = Number(process.hrtime.bigint() - started) / 1e6;
+      log('info', 'requisicao', {
+        method,
+        path,
+        status: res.statusCode,
+        durationMs: Math.round(durationMs),
+      });
+    });
+    return next();
+  };
+}
+
+function apiLimiter(overrides) {
+  return rateLimit({
+    windowMs: API_WINDOW_MS,
+    limit: API_REQUESTS_PER_WINDOW,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'Muitas requisições. Aguarde alguns minutos e tente de novo.' },
+    ...overrides,
+  });
+}
 
 function errorHandler(log) {
   // Quatro parâmetros são obrigatórios: é assim que o Express reconhece um handler de erro.
@@ -43,15 +78,21 @@ export function createApp({
   assertPublicUrl,
   analyst,
   secureCookies = false,
+  trustProxy = false,
   registrationOpen = true,
   loginLimit = {},
+  apiLimit = {},
   staticDir = null,
   log = () => {},
 }) {
   const app = express();
   app.disable('x-powered-by');
+  // Com proxy na frente, o IP do cliente é o primeiro salto do cabeçalho X-Forwarded-For.
+  if (trustProxy) app.set('trust proxy', 1);
   app.use(helmet());
   app.use(express.json({ limit: JSON_BODY_LIMIT }));
+  app.use(requestLogger(log));
+  app.use('/api', apiLimiter(apiLimit));
 
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });

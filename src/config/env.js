@@ -38,6 +38,11 @@ const envSchema = z.object({
     .enum(['true', 'false'], { error: 'deve ser true ou false' })
     .default('true')
     .transform((value) => value === 'true'),
+  // Atrás de um proxy HTTPS (Caddy, Nginx...), o IP real vem no cabeçalho. Sem isto, o limite vale para o proxy.
+  TRUST_PROXY: z
+    .enum(['true', 'false'], { error: 'deve ser true ou false' })
+    .default('false')
+    .transform((value) => value === 'true'),
   DATABASE_PATH: z.string().min(1).default(DEFAULT_DATABASE_PATH),
   HOST: z.string().min(1).default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
