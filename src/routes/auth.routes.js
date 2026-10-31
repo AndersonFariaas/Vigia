@@ -41,6 +41,22 @@ const loginSchema = z.strictObject({
     .max(MAX_PASSWORD_LENGTH, 'E-mail ou senha inválidos.'),
 });
 
+const accountSchema = z.strictObject({
+  nome: z
+    .string({ error: 'Informe seu nome.' })
+    .trim()
+    .min(NAME_MIN_LENGTH, `O nome deve ter pelo menos ${NAME_MIN_LENGTH} caracteres.`)
+    .max(NAME_MAX_LENGTH, `O nome pode ter no máximo ${NAME_MAX_LENGTH} caracteres.`)
+    .optional(),
+  email: emailSchema.optional(),
+  senhaAtual: z.string({ error: 'Informe a senha atual.' }).min(1, 'Informe a senha atual.').max(MAX_PASSWORD_LENGTH).optional(),
+  novaSenha: z
+    .string({ error: 'Informe a nova senha.' })
+    .min(MIN_PASSWORD_LENGTH, `A nova senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`)
+    .max(MAX_PASSWORD_LENGTH, `A nova senha pode ter no máximo ${MAX_PASSWORD_LENGTH} caracteres.`)
+    .optional(),
+});
+
 function cookieOptions(secure) {
   return {
     httpOnly: true,
@@ -125,6 +141,17 @@ export function createAuthRouter({ auth, secureCookies = false, registrationOpen
     res.clearCookie(SESSION_COOKIE, cookieOptions(secureCookies));
     res.status(204).end();
   });
+
+  // Todos os campos são opcionais: o painel envia só o que mudou.
+  router.patch(
+    '/conta',
+    requireAuth(auth),
+    asyncHandler(async (req, res) => {
+      const body = parseBody(accountSchema, req.body);
+      const user = await auth.updateAccount(req.user.id, body);
+      res.json({ user });
+    }),
+  );
 
   router.get('/sessao', requireAuth(auth), (req, res) => {
     res.json({ user: req.user });

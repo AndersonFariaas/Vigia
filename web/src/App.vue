@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, reactive, ref } from 'vue';
 import { api, ApiError, SESSION_EXPIRED_EVENT } from './api.js';
 import LandingPage from './components/LandingPage.vue';
 import AuthDialog from './components/AuthDialog.vue';
+import AccountDialog from './components/AccountDialog.vue';
 import { PRODUCT_NAME } from './brand.js';
 
 const FREQUENCY_OPTIONS = [
@@ -61,6 +62,14 @@ const authOpen = ref(false);
 function goToAuth(mode) {
   authMode.value = mode;
   authOpen.value = true;
+}
+
+// Modal "Minha conta", aberto pelo cabeçalho quando a pessoa está logada.
+const accountOpen = ref(false);
+
+function onAccountUpdated(updated) {
+  user.value = updated;
+  accountOpen.value = false;
 }
 
 const form = reactive({ url: '', label: '', intervalMinutes: DEFAULT_INTERVAL_MINUTES });
@@ -345,6 +354,9 @@ onUnmounted(() => {
             {{ apiOnline === null ? 'verificando API…' : apiOnline ? 'API online' : 'API offline' }}
           </p>
           <span class="account">{{ user.nome || user.email }}</span>
+          <button class="button button--ghost button--small" type="button" @click="accountOpen = true">
+            Minha conta
+          </button>
           <button class="button button--ghost button--small" type="button" @click="logout">Sair</button>
         </template>
 
@@ -398,6 +410,14 @@ onUnmounted(() => {
       @autenticado="onAuthenticated"
     />
 
+    <AccountDialog
+      v-if="user"
+      :open="accountOpen"
+      :user="user"
+      @close="accountOpen = false"
+      @updated="onAccountUpdated"
+    />
+
     <section v-if="user" class="panel" aria-labelledby="new-monitor-title">
       <p class="eyebrow">$ vigia add</p>
       <h2 id="new-monitor-title" class="panel__title">Monitorar uma página</h2>
@@ -423,7 +443,8 @@ onUnmounted(() => {
           </span>
         </div>
 
-        <div class="field">
+        <div class="form__row">
+        <div class="field form__name">
           <label class="field__label" for="monitor-label">Nome (opcional)</label>
           <input
             id="monitor-label"
@@ -436,7 +457,7 @@ onUnmounted(() => {
           />
         </div>
 
-        <div class="field">
+        <div class="field form__interval">
           <label class="field__label" for="monitor-interval">Frequência</label>
           <select
             id="monitor-interval"
@@ -455,6 +476,7 @@ onUnmounted(() => {
             <span v-if="submitting" class="spinner" aria-hidden="true"></span>
             {{ submitting ? 'Salvando…' : 'Monitorar página' }}
           </button>
+        </div>
         </div>
       </form>
 

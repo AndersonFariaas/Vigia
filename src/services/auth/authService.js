@@ -4,6 +4,15 @@ import { createSessionToken, hashSessionToken, SESSION_DAYS } from '../../securi
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+export class AccountUpdateError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.name = 'AccountUpdateError';
+    this.status = status;
+    this.expose = true;
+  }
+}
+
 export class AccountExistsError extends Error {
   constructor() {
     // Mensagem genérica de propósito: não confirma se o e-mail já tem conta.
@@ -59,6 +68,43 @@ export function createAuthService({ users, sessions, now = () => new Date() }) {
     // Abre uma sessão para um usuário já existente. Os testes usam para montar o cookie sem login.
     openSession(userId) {
       return startSession(userId);
+    },
+
+    /**
+     * Altera nome, e-mail e senha. Trocar e-mail ou senha exige a senha atual.
+     * Lança erro com mensagem própria quando a regra não é cumprida.
+     */
+    async updateAccount(userId, { nome, email, senhaAtual, novaSenha }) {
+      const current = users.findAuthById(userId);
+      const emailChanged = email !== undefined && email !== current.email;
+      const passwordChanged = novaSenha !== undefined;
+
+      if (emailChanged || passwordChanged) {
+        if (senhaAtual === undefined) throw new AccountUpdateError(400, 'Informe a senha atual para trocar e-mail ou senha.');
+        if (!(await verifyPassword(senhaAtual, current.password_hash))) {
+          throw new AccountUpdateError(400, 'Senha atual incorreta.');
+        }
+      }
+
+      if (emailChanged && users.findByEmail(email)) {
+        throw new AccountUpdateError(409, 'Este e-mail já está em uso.');
+      }
+
+      const next = {
+        id: userId,
+        nome: nome ?? current.nome,
+        email: emailChanged ? email : current.email,
+        passwordHash: passwordChanged ? await hashPassword(novaSenha) : current.password_hash,
+      };
+      try {
+        users.update(next);
+      } catch (error) {
+        if (error.message?.includes('UNIQUE constraint failed')) {
+          throw new AccountUpdateError(409, 'Este e-mail já está em uso.');
+        }
+        throw error;
+      }
+      return { id: next.id, email: next.email, nome: next.nome };
     },
 
     logout(token) {

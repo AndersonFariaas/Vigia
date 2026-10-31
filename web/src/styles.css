@@ -556,6 +556,40 @@ select {
 }
 
 /* Página inicial: menu, hero, seções de conteúdo e rodapé. */
+/* Formulário de monitorar: campos menores ao lado do botão, na mesma linha. */
+.form > .form__row {
+  grid-column: 1 / -1;
+}
+
+.form__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+}
+
+.form__name {
+  flex: 0 1 260px;
+  min-width: 0;
+}
+
+.form__interval {
+  flex: 0 1 200px;
+  min-width: 0;
+}
+
+.form__row .form__actions {
+  margin-left: auto;
+}
+
+/* Nome da conta no cabeçalho: legível ao lado dos outros controles. */
+.topbar .account {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
 /* Cabeçalho de largura total: fundo e linha cobrem a tela inteira ao rolar. */
 .site-header {
   position: sticky;
