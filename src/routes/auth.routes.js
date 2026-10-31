@@ -107,10 +107,12 @@ export function requireAuth(auth) {
 export function createAuthRouter({ auth, secureCookies = false, registrationOpen = true, loginLimit = {} }) {
   const router = Router();
 
-  // Por IP. Cadastro e entrada compartilham o limite, para não servirem de atalho um para o outro.
+  // Por IP, e só as respostas de erro contam: o uso normal não é barrado. Cobre o cadastro, a entrada
+  // e os pedidos que exigem a senha atual (troca e exclusão), para nenhum deles virar atalho de tentativas.
   const attemptLimiter = rateLimit({
     windowMs: LOGIN_WINDOW_MS,
     limit: LOGIN_ATTEMPTS_PER_WINDOW,
+    skipSuccessfulRequests: true,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     message: { error: 'Muitas tentativas. Aguarde alguns minutos e tente de novo.' },
@@ -158,6 +160,7 @@ export function createAuthRouter({ auth, secureCookies = false, registrationOpen
   // Todos os campos são opcionais: o painel envia só o que mudou.
   router.patch(
     '/conta',
+    attemptLimiter,
     requireAuth(auth),
     asyncHandler(async (req, res) => {
       const body = parseBody(accountSchema, req.body);
@@ -169,6 +172,7 @@ export function createAuthRouter({ auth, secureCookies = false, registrationOpen
   // Exclusão de conta (LGPD): apaga a conta e todos os dados dela, com confirmação da senha.
   router.delete(
     '/conta',
+    attemptLimiter,
     requireAuth(auth),
     asyncHandler(async (req, res) => {
       const body = parseBody(deleteAccountSchema, req.body);

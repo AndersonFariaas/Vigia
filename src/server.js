@@ -68,7 +68,15 @@ async function main() {
   });
 
   const assertPublicUrl = (url) => assertPublicHost(new URL(url).hostname);
-  const checkMonitor = createChecker({ db, ...repos, scrape, assertPublicUrl, log });
+  const checkMonitor = createChecker({
+    db,
+    monitors: repos.monitors,
+    snapshots: repos.snapshots,
+    alerts: repos.alerts,
+    scrape,
+    assertPublicUrl,
+    log,
+  });
   const dispatchPending = createDispatcher({
     alerts: repos.alerts,
     // O destinatário vem de cada alerta: é o e-mail do dono do monitor.
@@ -76,7 +84,7 @@ async function main() {
     log,
   });
   const runRound = createRoundRunner({
-    // Só o agendador usa findByIdUnscoped; a lista de vencidos não vem de rota.
+    // O agendador lista monitores de todos os usuários. Isso nunca passa por uma rota.
     findDue: (limit) => repos.monitors.findDue(new Date().toISOString(), limit),
     checkMonitor,
     dispatchPending,

@@ -11,6 +11,12 @@ export class ApiError extends Error {
   }
 }
 
+/** Texto para mostrar à pessoa. Detalhes de validação já vêm legíveis e têm prioridade. */
+export function messageOf(error) {
+  if (error instanceof ApiError && error.details.length) return error.details.join(' ');
+  return error.message;
+}
+
 /**
  * Chamada à API. Erros chegam já sanitizados pelo servidor: a mensagem
  * exibida é sempre a que a API devolve em `error`, nunca um erro cru do navegador.

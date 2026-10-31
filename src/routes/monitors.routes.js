@@ -110,10 +110,11 @@ export function createMonitorsRouter({ repos, checkMonitor, assertPublicUrl, ana
     asyncHandler(async (req, res) => {
       const body = parseBody(createBodySchema, req.body);
       const userId = req.user.id;
-      if (monitors.listByUser(userId).length >= MAX_MONITORS_PER_USER) throw new QuotaError();
-
       const url = validateMonitorUrl(body.url);
       await assertPublicUrl(url);
+
+      // Conferida depois do await: duas criações ao mesmo tempo não podem passar do limite juntas.
+      if (monitors.listByUser(userId).length >= MAX_MONITORS_PER_USER) throw new QuotaError();
 
       const monitor = monitors.create({
         userId,
