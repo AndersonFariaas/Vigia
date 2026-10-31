@@ -47,29 +47,6 @@ const emit = defineEmits(['open-auth']);
       </div>
     </section>
 
-    <section id="recursos" class="section">
-      <p class="eyebrow">Recursos</p>
-      <h2 class="section__title">Feito para ver o que realmente mudou</h2>
-      <p class="section__lead">
-        Ruído de horário e de token não geram alerta. Você recebe só o que importa, com a diferença explicada.
-      </p>
-
-      <div class="features">
-        <article class="feature">
-          <h3 class="feature__title">Diferença linha a linha</h3>
-          <p class="feature__text">Veja exatamente o que entrou e o que saiu, sem abrir a página.</p>
-        </article>
-        <article class="feature">
-          <h3 class="feature__title">Sinais de risco</h3>
-          <p class="feature__text">Formulário de senha enviando para outro site, domínio que imita uma marca e certificado vencido.</p>
-        </article>
-        <article class="feature">
-          <h3 class="feature__title">Análise com a Devin</h3>
-          <p class="feature__text">Cada alerta pode ser analisado com a Devin, de forma opcional e sob demanda.</p>
-        </article>
-      </div>
-    </section>
-
     <section id="como-funciona" class="section">
       <p class="eyebrow">Como funciona</p>
       <h2 class="section__title">Três passos para começar</h2>
@@ -91,6 +68,29 @@ const emit = defineEmits(['open-auth']);
           <p class="step__text">Quando a página muda, você recebe um e-mail com a diferença e o status da análise.</p>
         </li>
       </ol>
+    </section>
+
+    <section id="recursos" class="section">
+      <p class="eyebrow">Recursos</p>
+      <h2 class="section__title">Feito para ver o que realmente mudou</h2>
+      <p class="section__lead">
+        Ruído de horário e de token não geram alerta. Você recebe só o que importa, com a diferença explicada.
+      </p>
+
+      <div class="features">
+        <article class="feature">
+          <h3 class="feature__title">Diferença linha a linha</h3>
+          <p class="feature__text">Veja exatamente o que entrou e o que saiu, sem abrir a página.</p>
+        </article>
+        <article class="feature">
+          <h3 class="feature__title">Sinais de risco</h3>
+          <p class="feature__text">Formulário de senha enviando para outro site, domínio que imita uma marca e certificado vencido.</p>
+        </article>
+        <article class="feature">
+          <h3 class="feature__title">Análise com a Devin</h3>
+          <p class="feature__text">Cada alerta pode ser analisado com a Devin, de forma opcional e sob demanda.</p>
+        </article>
+      </div>
     </section>
 
     <section id="exemplos" class="section">
@@ -139,8 +139,8 @@ const emit = defineEmits(['open-auth']);
         <strong>{{ PRODUCT_NAME }}</strong> · Acesso por conta com senha. Antes de expor este painel na internet, use HTTPS.
       </p>
       <nav class="landing-footer__links" aria-label="Rodapé">
-        <a href="#recursos">Recursos</a>
         <a href="#como-funciona">Como funciona</a>
+        <a href="#recursos">Recursos</a>
         <a href="#exemplos">Exemplos</a>
       </nav>
     </footer>

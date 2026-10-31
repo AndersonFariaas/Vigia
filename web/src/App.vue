@@ -1,9 +1,10 @@
 <script setup>
-import { onMounted, onUnmounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { api, ApiError, SESSION_EXPIRED_EVENT } from './api.js';
 import LandingPage from './components/LandingPage.vue';
 import AuthDialog from './components/AuthDialog.vue';
 import AccountDialog from './components/AccountDialog.vue';
+import ScrollIndicator from './components/ScrollIndicator.vue';
 import { PRODUCT_NAME } from './brand.js';
 
 const FREQUENCY_OPTIONS = [
@@ -299,20 +300,35 @@ function onSessionExpired() {
   authOpen.value = true;
 }
 
+// A barra some ao rolar para baixo e volta ao subir. Com um modal aberto, ela fica visível.
+const HEADER_HIDE_AFTER_PX = 120;
+const headerHidden = ref(false);
+const hideHeader = computed(() => headerHidden.value && !authOpen.value && !accountOpen.value);
+let lastScrollY = 0;
+
+function onScroll() {
+  const y = window.scrollY;
+  if (y > lastScrollY && y > HEADER_HIDE_AFTER_PX) headerHidden.value = true;
+  else if (y < lastScrollY) headerHidden.value = false;
+  lastScrollY = Math.max(0, y);
+}
+
 onMounted(() => {
   initTheme();
   checkHealth();
   restoreSession();
   window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+  window.addEventListener('scroll', onScroll, { passive: true });
 });
 
 onUnmounted(() => {
   window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+  window.removeEventListener('scroll', onScroll);
 });
 </script>
 
 <template>
-  <header class="site-header">
+  <header class="site-header" :class="{ 'site-header--hidden': hideHeader }">
     <div class="topbar">
       <h1 class="brand">
         <svg class="brand__icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
@@ -330,9 +346,9 @@ onUnmounted(() => {
       </h1>
 
       <nav v-if="!user" class="nav" aria-label="Principal">
+        <a href="#como-funciona">Como funciona</a>
         <a href="#recursos">Recursos</a>
         <a href="#exemplos">Exemplos</a>
-        <a href="#como-funciona">Como funciona</a>
       </nav>
 
       <div class="topbar__controls">
@@ -396,6 +412,8 @@ onUnmounted(() => {
       </div>
     </div>
   </header>
+
+  <ScrollIndicator />
 
   <div class="app">
     <LandingPage v-if="sessionChecked && !user" @open-auth="goToAuth" />
