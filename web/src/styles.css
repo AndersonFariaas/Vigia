@@ -590,13 +590,76 @@ select {
   color: var(--text);
 }
 
-/* Cabeçalho de largura total: fundo e linha cobrem a tela inteira ao rolar. */
-.site-header {
-  position: sticky;
+/*
+ * Cabeçalho fixo de largura total. Ele fica por cima do conteúdo, sem empurrá-lo:
+ * o espaço dele já está reservado no topo da página (--header-h).
+ */
+:root {
+  --header-h: 88px;
+}
+
+/* Barra de rolagem nativa escondida: o indicador fino (ScrollIndicator) aparece só ao rolar. */
+html {
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-indicator {
+  position: fixed;
   top: 0;
+  right: 0;
+  z-index: 70;
+  width: 14px;
+  height: 100dvh;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.scroll-indicator--visible {
+  opacity: 1;
+}
+
+.scroll-indicator__thumb {
+  position: absolute;
+  right: 4px;
+  width: 6px;
+  border-radius: 999px;
+  background: var(--muted);
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .scroll-indicator {
+    transition: opacity 0.3s ease;
+  }
+}
+
+.site-header {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
   z-index: 40;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
+}
+
+.site-header--hidden {
+  transform: translateY(-100%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .site-header {
+    transition: transform 0.3s ease;
+  }
+}
+
+/* Conteúdo começa abaixo do cabeçalho, para nada ficar escondido atrás dele no topo. */
+.app {
+  padding-top: calc(var(--header-h) + var(--space-6));
 }
 
 .site-header .topbar {
